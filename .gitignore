@@ -1,0 +1,3 @@
+/bin
+*.DS_Store
+azure-metrics-exporter
