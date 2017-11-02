@@ -11,19 +11,20 @@ import (
 
 // Config - Azure exporter configuration
 type Config struct {
-	Credentials    Credentials `yaml:"credentials"`
-	TargetResource string      `yaml:"target_resource"`
-	Metrics        []Metric    `yaml:"metrics"`
+	Credentials Credentials `yaml:"credentials"`
+	Targets     []Target    `yaml:"targets"`
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline"`
 }
 
+// SafeConfig - mutex protected config for live reloads.
 type SafeConfig struct {
 	sync.RWMutex
 	C *Config
 }
 
+// ReloadConfig - allows for live reloads of the configuration file.
 func (sc *SafeConfig) ReloadConfig(confFile string) (err error) {
 	var c = &Config{}
 
@@ -49,6 +50,14 @@ type Credentials struct {
 	ClientID       string `yaml:"client_id"`
 	ClientSecret   string `yaml:"client_secret"`
 	TenantID       string `yaml:"tenant_id"`
+
+	XXX map[string]interface{} `yaml:",inline"`
+}
+
+// Target represents Azure target resource and its associated metric definitions
+type Target struct {
+	Resource string   `yaml:"resource"`
+	Metrics  []Metric `yaml:"metrics"`
 
 	XXX map[string]interface{} `yaml:",inline"`
 }

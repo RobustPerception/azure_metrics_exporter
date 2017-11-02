@@ -104,37 +104,44 @@ func (ac *AzureClient) getAccessToken() {
 	ac.accessToken = data["access_token"].(string)
 }
 
-func (ac *AzureClient) getMetricDefinitions() AzureMetricDefinitionResponse {
-	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, sc.C.TargetResource)
+// Loop through all specified resource targets and get their respective metric definitions.
+func (ac *AzureClient) getMetricDefinitions() []AzureMetricDefinitionResponse {
 	apiVersion := "2016-03-01"
-	metricsTarget := fmt.Sprintf("https://management.azure.com/%s/providers/microsoft.insights/metricDefinitions?api-version=%s", metricsResource, apiVersion)
+	var definitions []AzureMetricDefinitionResponse
 
-	req, err := http.NewRequest("GET", metricsTarget, nil)
-	if err != nil {
-		log.Fatalf("Error creating HTTP request: %v", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
-	resp, err := ac.client.Do(req)
-	if err != nil {
-		log.Fatalf("Error: %v", err)
+	for _, target := range sc.C.Targets {
+		metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, target.Resource)
+		metricsTarget := fmt.Sprintf("https://management.azure.com/%s/providers/microsoft.insights/metricDefinitions?api-version=%s", metricsResource, apiVersion)
+
+		req, err := http.NewRequest("GET", metricsTarget, nil)
+		if err != nil {
+			log.Fatalf("Error creating HTTP request: %v", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+ac.accessToken)
+		resp, err := ac.client.Do(req)
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatalf("Error reading body of response: %v", err)
+		}
+
+		def := AzureMetricDefinitionResponse{}
+		err = json.Unmarshal(body, &def)
+		if err != nil {
+			log.Fatalf("Error unmarshalling response body: %v", err)
+		}
+		definitions = append(definitions, def)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalf("Error reading body of response: %v", err)
-	}
-
-	var data AzureMetricDefinitionResponse
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		log.Fatalf("Error unmarshalling response body: %v", err)
-	}
-
-	return data
+	return definitions
 }
 
-func (ac *AzureClient) getMetricValue(metricName string) AzureMetricValiueResponse {
-	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, sc.C.TargetResource)
+//
+func (ac *AzureClient) getMetricValue(metricName string, target string) AzureMetricValiueResponse {
+	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, target)
 	apiVersion := "2016-09-01"
 	filter := fmt.Sprintf("(name.value eq '%s') and aggregationType eq 'Total' and startTime eq 2017-11-01T17:05 and endTime eq 2017-11-01T17:15", metricName)
 	filter = strings.Replace(filter, " ", "%20", -1)
@@ -163,11 +170,8 @@ func (ac *AzureClient) getMetricValue(metricName string) AzureMetricValiueRespon
 	return data
 }
 
-// Collector type contains target resource and metrics we wish to query for.
-type Collector struct {
-	target  string
-	metrics []config.Metric
-}
+// Collector generic collector type
+type Collector struct{}
 
 // Describe implemented with dummy data to satisfy interface.
 func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
@@ -178,9 +182,12 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	// do get Azure metric result from API and create Prometheus metric from it
 	// Get metric values for all defined metrics
+
 	var metricValueData AzureMetricValiueResponse
-	for _, m := range sc.C.Metrics {
-		metricValueData = ac.getMetricValue(m.Name)
+	for _, target := range sc.C.Targets {
+		for _, metric := range target.Metrics {
+			metricValueData = ac.getMetricValue(metric.Name, target.Resource)
+		}
 	}
 
 	for _, m := range metricValueData.Value[0].Data {
@@ -202,17 +209,9 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 
 }
 
-// NewCollector ...
-func NewCollector(target string, metrics []config.Metric) *Collector {
-	return &Collector{
-		target:  target,
-		metrics: metrics,
-	}
-}
-
 func handler(w http.ResponseWriter, r *http.Request) {
 	registry := prometheus.NewRegistry()
-	collector := NewCollector(sc.C.TargetResource, sc.C.Metrics)
+	collector := &Collector{}
 	registry.MustRegister(collector)
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)
