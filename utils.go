@@ -38,7 +38,6 @@ func CreateResourceLabels(resourceID string) map[string]string {
 // acronyms are converted to lower-case and preceded by an underscore.
 func ToSnakeCase(in string) string {
 	runes := []rune(in)
-
 	var out []rune
 	for i := 0; i < len(runes); i++ {
 		if i > 0 && (unicode.IsUpper(runes[i]) || unicode.IsNumber(runes[i])) && ((i+1 < len(runes) && unicode.IsLower(runes[i+1])) || unicode.IsLower(runes[i-1])) {
@@ -46,6 +45,5 @@ func ToSnakeCase(in string) string {
 		}
 		out = append(out, unicode.ToLower(runes[i]))
 	}
-
 	return string(out)
 }

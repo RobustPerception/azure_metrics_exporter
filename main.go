@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/conorbro/azure-metrics-exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
@@ -17,9 +19,10 @@ var (
 	sc = &config.SafeConfig{
 		C: &config.Config{},
 	}
-	ac            = NewAzureClient()
-	configFile    = kingpin.Flag("config.file", "Azure exporter configuration file.").Default("azure.yml").String()
-	listenAddress = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9276").String()
+	ac                    = NewAzureClient()
+	configFile            = kingpin.Flag("config.file", "Azure exporter configuration file.").Default("azure.yml").String()
+	listenAddress         = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9276").String()
+	listMetricDefinitions = kingpin.Flag("list.definitions", "Whether or not to list available metric definitions for the given resources.").Bool()
 )
 
 func init() {
@@ -34,7 +37,7 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- prometheus.NewDesc("dummy", "dummy", nil, nil)
 }
 
-// Collect ...
+// Collect - collect results from Azure Montior API and create Prometheus metrics.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	// Get metric values for all defined metrics
 	var metricValueData AzureMetricValiueResponse
@@ -72,6 +75,17 @@ func main() {
 
 	ac.getAccessToken()
 
+	// Print list of available metric definitions for each resource to console if specified.
+	if *listMetricDefinitions {
+		results := ac.getMetricDefinitions()
+		for k, v := range results {
+			fmt.Printf("Resource: %s\n\nAvailable Metrics:\n", strings.Split(k, "/")[6])
+			for _, r := range v.MetricDefinitionResponses {
+				fmt.Printf("- %s\n", r.Name.Value)
+			}
+		}
+	}
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
             <head>
@@ -85,7 +99,6 @@ func main() {
 	})
 
 	http.HandleFunc("/metrics", handler)
-	// http.Handle("/metrics", promhttp.Handler())
 	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
 		log.Fatalf("Error starting HTTP server: %v", err)
 		os.Exit(1)

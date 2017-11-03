@@ -98,9 +98,9 @@ func (ac *AzureClient) getAccessToken() {
 }
 
 // Loop through all specified resource targets and get their respective metric definitions.
-func (ac *AzureClient) getMetricDefinitions() []AzureMetricDefinitionResponse {
+func (ac *AzureClient) getMetricDefinitions() map[string]AzureMetricDefinitionResponse {
 	apiVersion := "2016-03-01"
-	var definitions []AzureMetricDefinitionResponse
+	definitions := make(map[string]AzureMetricDefinitionResponse)
 
 	for _, target := range sc.C.Targets {
 		metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, target.Resource)
@@ -126,7 +126,7 @@ func (ac *AzureClient) getMetricDefinitions() []AzureMetricDefinitionResponse {
 		if err != nil {
 			log.Fatalf("Error unmarshalling response body: %v", err)
 		}
-		definitions = append(definitions, def)
+		definitions[target.Resource] = def
 	}
 
 	return definitions
