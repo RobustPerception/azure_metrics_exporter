@@ -1,0 +1,17 @@
+---
+  
+credentials:
+  subscription_id: <secret>
+  client_id: <secret>
+  client_secret: <secret>
+  tenant_id: <secret>
+
+targets:
+  - resource: "/resourceGroups/blog-group/providers/Microsoft.Web/sites/blog"
+    metrics:
+    - name: "BytesReceived"
+    - name: "BytesSent"
+  - resource: "/resourceGroups/app-group/providers/Microsoft.Web/sites/app"
+    metrics:
+    - name: "Http2xx"
+    - name: "Http5xx"
