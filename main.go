@@ -50,7 +50,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			labels := CreateResourceLabels(metricValueData.Value[0].ID)
 			//fmt.Printf(metricValueData.Value[0].ID)
 			splitres := strings.Split(target.Resource, "/")
-			sname := (splitres[len(splitres)-1])
+			sname := ToSnakeCase((splitres[len(splitres)-1]))
 			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc(sname+"_"+metricName, "", nil, labels),
 				prometheus.GaugeValue,
