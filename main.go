@@ -43,14 +43,15 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	var metricValueData AzureMetricValiueResponse
 	for _, target := range sc.C.Targets {
 		for _, metric := range target.Metrics {
+			var replacer = strings.NewReplacer("-", "_", " ", "", "/", "")
 			metricValueData = ac.getMetricValue(metric.Name, target.Resource)
 			//fmt.Printf(metric.Name)
-			metricName := ToSnakeCase(metricValueData.Value[0].Name.Value)
+			metricName := ToSnakeCase(replacer.Replace(metricValueData.Value[0].Name.Value))
 			metricValue := metricValueData.Value[0].Data[len(metricValueData.Value[0].Data)-1]
 			labels := CreateResourceLabels(metricValueData.Value[0].ID)
 			//fmt.Printf(metricValueData.Value[0].ID)
 			splitres := strings.Split(target.Resource, "/")
-			sname := ToSnakeCase((splitres[len(splitres)-1]))
+			sname := replacer.Replace((splitres[len(splitres)-1]))
 			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc(sname+"_"+metricName, "", nil, labels),
 				prometheus.GaugeValue,
