@@ -11,6 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
+	"github.com/davecgh/go-spew/spew"
 
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
@@ -45,20 +46,23 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		for _, metric := range target.Metrics {
 			var replacer = strings.NewReplacer("-", "_", " ", "", "/", "")
 			metricValueData = ac.getMetricValue(metric.Name, target.Resource)
-			//fmt.Printf(metric.Name)
+			//fmt.Printf(len(metricValueData.Value[0].Data))
+			spew.Dump(len(metricValueData.Value[0].Data))
 			metricName := ToSnakeCase(replacer.Replace(metricValueData.Value[0].Name.Value))
-			metricValue := metricValueData.Value[0].Data[len(metricValueData.Value[0].Data)-1]
+			//vals := make([]int, 0)
+			if len(metricValueData.Value[0].Data) != 0 {
+				metricValue := metricValueData.Value[0].Data[len(metricValueData.Value[0].Data)-1]
 			labels := CreateResourceLabels(metricValueData.Value[0].ID)
-			//fmt.Printf(metricValueData.Value[0].ID)
 			splitres := strings.Split(target.Resource, "/")
-			sname := replacer.Replace((splitres[len(splitres)-1]))
+			sname := replacer.Replace(splitres[len(splitres)-2]+"_"+splitres[len(splitres)-1])
+			//fmt.Printf(sname)
 			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc(sname+"_"+metricName, "", nil, labels),
 				prometheus.GaugeValue,
 				metricValue.Total,
 			)
 		}
-	}
+	} }
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
