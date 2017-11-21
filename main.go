@@ -47,7 +47,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			var replacer = strings.NewReplacer("-", "_", " ", "", "/", "")
 			metricValueData = ac.getMetricValue(metric.Name, target.Resource)
 			//fmt.Printf(len(metricValueData.Value[0].Data))
-			spew.Dump(len(metricValueData.Value[0].Data))
+			//spew.Dump(len(metricValueData.Value[0].Data))
 			metricName := ToSnakeCase(replacer.Replace(metricValueData.Value[0].Name.Value))
 			//vals := make([]int, 0)
 			if len(metricValueData.Value[0].Data) != 0 {
