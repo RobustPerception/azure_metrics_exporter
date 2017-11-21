@@ -45,12 +45,15 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	for _, target := range sc.C.Targets {
 		for _, metric := range target.Metrics {
 			var replacer = strings.NewReplacer("-", "_", " ", "", "/", "")
+			spew.Dump(target.Resource)
 			metricValueData = ac.getMetricValue(metric.Name, target.Resource)
+			if metricValueData.Value != nil {
 			//fmt.Printf(len(metricValueData.Value[0].Data))
-			//spew.Dump(len(metricValueData.Value[0].Data))
-			metricName := ToSnakeCase(replacer.Replace(metricValueData.Value[0].Name.Value))
+			//spew.Dump(metricValueData.Value)
+			//metricName := ToSnakeCase(replacer.Replace(metricValueData.Value[0].Name.Value))
 			//vals := make([]int, 0)
 			if len(metricValueData.Value[0].Data) != 0 {
+				metricName := ToSnakeCase(replacer.Replace(metricValueData.Value[0].Name.Value))
 				metricValue := metricValueData.Value[0].Data[len(metricValueData.Value[0].Data)-1]
 			labels := CreateResourceLabels(metricValueData.Value[0].ID)
 			splitres := strings.Split(target.Resource, "/")
@@ -62,6 +65,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 				metricValue.Total,
 			)
 		}
+	    }
 	} }
 }
 
