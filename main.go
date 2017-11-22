@@ -46,23 +46,23 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			var replacer = strings.NewReplacer("-", "_", " ", "", "/", "")
 			metricValueData = ac.getMetricValue(metric.Name, target.Resource)
 			if metricValueData.Value != nil {
-			if len(metricValueData.Value[0].Data) != 0 {
-				metricName := ToSnakeCase(replacer.Replace(metricValueData.Value[0].Name.Value))
-				metricValue := metricValueData.Value[0].Data[len(metricValueData.Value[0].Data)-1]
-			resource_type := strings.Split(metricValueData.Value[0].ID, "/")[6]
-			restype := strings.Split(resource_type, ".")[1]
-			resource_group := strings.Split(metricValueData.Value[0].ID, "/")[4]
-			resource_name := strings.Split(metricValueData.Value[0].ID, "/")[8]
-			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(restype+"_"+metricName, "", []string{"resource_type", "resource_group", "resource_name"}, nil),
-				prometheus.GaugeValue,
-				metricValue.Total,
-				resource_type,
-				resource_group,
-				resource_name,
-			)
-		}
-	    }
+				if len(metricValueData.Value[0].Data) != 0 {
+					metricName := ToSnakeCase(replacer.Replace(metricValueData.Value[0].Name.Value))
+					metricValue := metricValueData.Value[0].Data[len(metricValueData.Value[0].Data)-1]
+					resource_type := strings.Split(metricValueData.Value[0].ID, "/")[6]
+					restype := strings.Split(resource_type, ".")[1]
+					resource_group := strings.Split(metricValueData.Value[0].ID, "/")[4]
+					resource_name := strings.Split(metricValueData.Value[0].ID, "/")[8]
+					ch <- prometheus.MustNewConstMetric(
+						prometheus.NewDesc(restype+"_"+metricName, "", []string{"resource_type", "resource_group", "resource_name"}, nil),
+						prometheus.GaugeValue,
+						metricValue.Total,
+						resource_type,
+						resource_group,
+						resource_name,
+					)
+				}
+			}
 	} }
 }
 
