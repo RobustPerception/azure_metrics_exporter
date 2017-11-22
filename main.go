@@ -64,7 +64,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			//fmt.Printf(sname)
 			resource_type := strings.Split(metricValueData.Value[0].ID, "/")[6]
 			restype := strings.Split(resource_type, ".")[1]
-			fmt.Printf(restype)
+			//fmt.Printf(restype)
 			resource_group := strings.Split(metricValueData.Value[0].ID, "/")[4]
 			resource_name := strings.Split(metricValueData.Value[0].ID, "/")[8]
 			ch <- prometheus.MustNewConstMetric(
