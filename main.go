@@ -54,7 +54,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			resource_group := strings.Split(metricValueData.Value[0].ID, "/")[4]
 			resource_name := strings.Split(metricValueData.Value[0].ID, "/")[8]
 			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(restype+"."+metricName, "", []string{"resource_type", "resource_group", "resource_name"}, nil),
+				prometheus.NewDesc(restype+"_"+metricName, "", []string{"resource_type", "resource_group", "resource_name"}, nil),
 				prometheus.GaugeValue,
 				metricValue.Total,
 				resource_type,
