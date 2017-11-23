@@ -44,6 +44,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	for _, target := range sc.C.Targets {
 		for _, metric := range target.Metrics {
 			var replacer = strings.NewReplacer("-", "_", " ", "", "/", "")
+			ac.getAccessToken()
 			metricValueData = ac.getMetricValue(metric.Name, target.Resource)
 			if metricValueData.Value != nil {
 				if len(metricValueData.Value[0].Data) != 0 {
