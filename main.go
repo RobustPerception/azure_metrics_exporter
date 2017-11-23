@@ -43,17 +43,28 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	var metricValueData AzureMetricValiueResponse
 	for _, target := range sc.C.Targets {
 		for _, metric := range target.Metrics {
+			var replacer = strings.NewReplacer("-", "_", " ", "", "/", "")
+			ac.getAccessToken()
 			metricValueData = ac.getMetricValue(metric.Name, target.Resource)
-			metricName := ToSnakeCase(metricValueData.Value[0].Name.Value)
-			metricValue := metricValueData.Value[0].Data[len(metricValueData.Value[0].Data)-1]
-			labels := CreateResourceLabels(metricValueData.Value[0].ID)
-			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(metricName, "", nil, labels),
-				prometheus.GaugeValue,
-				metricValue.Total,
-			)
-		}
-	}
+			if metricValueData.Value != nil {
+				if len(metricValueData.Value[0].Data) != 0 {
+					metricName := ToSnakeCase(replacer.Replace(metricValueData.Value[0].Name.Value))
+					metricValue := metricValueData.Value[0].Data[len(metricValueData.Value[0].Data)-1]
+					resource_type := strings.Split(metricValueData.Value[0].ID, "/")[6]
+					restype := strings.Split(resource_type, ".")[1]
+					resource_group := strings.Split(metricValueData.Value[0].ID, "/")[4]
+					resource_name := strings.Split(metricValueData.Value[0].ID, "/")[8]
+					ch <- prometheus.MustNewConstMetric(
+						prometheus.NewDesc(restype+"_"+metricName, "", []string{"resource_type", "resource_group", "resource_name"}, nil),
+						prometheus.GaugeValue,
+						metricValue.Total,
+						resource_type,
+						resource_group,
+						resource_name,
+					)
+				}
+			}
+	} }
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {

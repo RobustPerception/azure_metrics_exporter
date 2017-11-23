@@ -55,3 +55,13 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9276']
 ```
+
+# Docker Usage
+
+
+```
+docker run -it -e CONFIG_FILE=Compute.yml -v /devops/azure-exporter/config:/config carlozleite/azure-metrics-exporter:latest
+
+```
+
+You can create different services in docker swarm one for each type of resource provider in azure just swap the YML file and then create a Prometheus service and point the targets to the service names on port 9090.
