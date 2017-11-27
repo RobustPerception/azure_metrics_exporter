@@ -105,7 +105,6 @@ func (ac *AzureClient) getMetricDefinitions() map[string]AzureMetricDefinitionRe
 	for _, target := range sc.C.Targets {
 		metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, target.Resource)
 		metricsTarget := fmt.Sprintf("https://management.azure.com/%s/providers/microsoft.insights/metricDefinitions?api-version=%s", metricsResource, apiVersion)
-
 		req, err := http.NewRequest("GET", metricsTarget, nil)
 		if err != nil {
 			log.Fatalf("Error creating HTTP request: %v", err)
@@ -128,7 +127,6 @@ func (ac *AzureClient) getMetricDefinitions() map[string]AzureMetricDefinitionRe
 		}
 		definitions[target.Resource] = def
 	}
-
 	return definitions
 }
 

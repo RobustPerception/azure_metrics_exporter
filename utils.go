@@ -6,7 +6,6 @@ import (
 	"log"
 	"strings"
 	"time"
-	"unicode"
 )
 
 // PrintPrettyJSON - Prints structs nicely for debugging.
@@ -32,18 +31,4 @@ func CreateResourceLabels(resourceID string) map[string]string {
 	labels["resource_group"] = strings.Split(resourceID, "/")[4]
 	labels["resource_name"] = strings.Split(resourceID, "/")[8]
 	return labels
-}
-
-// ToSnakeCase convert the given string to snake case following the Golang format:
-// acronyms are converted to lower-case and preceded by an underscore.
-func ToSnakeCase(in string) string {
-	runes := []rune(in)
-	var out []rune
-	for i := 0; i < len(runes); i++ {
-		if i > 0 && (unicode.IsUpper(runes[i]) || unicode.IsNumber(runes[i])) && ((i+1 < len(runes) && unicode.IsLower(runes[i+1])) || unicode.IsLower(runes[i-1])) {
-			out = append(out, '_')
-		}
-		out = append(out, unicode.ToLower(runes[i]))
-	}
-	return string(out)
 }

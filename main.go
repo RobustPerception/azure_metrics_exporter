@@ -44,7 +44,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	for _, target := range sc.C.Targets {
 		for _, metric := range target.Metrics {
 			metricValueData = ac.getMetricValue(metric.Name, target.Resource)
-			metricName := ToSnakeCase(metricValueData.Value[0].Name.Value)
+			metricName := metricValueData.Value[0].Name.Value
 			metricValue := metricValueData.Value[0].Data[len(metricValueData.Value[0].Data)-1]
 			labels := CreateResourceLabels(metricValueData.Value[0].ID)
 			ch <- prometheus.MustNewConstMetric(
