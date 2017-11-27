@@ -44,6 +44,14 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	for _, target := range sc.C.Targets {
 		for _, metric := range target.Metrics {
 			metricValueData = ac.getMetricValue(metric.Name, target.Resource)
+			if metricValueData.Value == nil {
+				log.Printf("Metric %v not found at target %v\n", metric.Name, target.Resource)
+				continue
+			}
+			if len(metricValueData.Value[0].Data) == 0 {
+				log.Printf("No metric data returned for metric %v at target %v\n", metric.Name, target.Resource)
+				continue
+			}
 			metricName := metricValueData.Value[0].Name.Value
 			metricValue := metricValueData.Value[0].Data[len(metricValueData.Value[0].Data)-1]
 			labels := CreateResourceLabels(metricValueData.Value[0].ID)
