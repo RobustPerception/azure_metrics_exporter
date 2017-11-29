@@ -15,42 +15,44 @@ type AzureMetricDefinitionResponse struct {
 	MetricDefinitionResponses []metricDefinitionResponse `json:"value"`
 }
 type metricDefinitionResponse struct {
-	Dimensions             []dimensionData      `json:"dimensions"`
-	ID                     string               `json:"id"`
-	IsDimensionRequired    bool                 `json:"isDimensionRequired"`
-	MetricAvailabilities   []metricAvailability `json:"metricAvailabilities"`
-	Name                   metricData           `json:"name"`
-	PrimaryAggregationType string               `json:"primaryAggregationType"`
-	ResourceID             string               `json:"resourceId"`
-	Unit                   string               `json:"unit"`
-}
-type dimensionData struct {
-	LocalizedValue string `json:"localizedValue"`
-	Value          string `json:"value"`
-}
-type metricAvailability struct {
-	Retention string `json:"retention"`
-	TimeGrain string `json:"timeGrain"`
-}
-type metricData struct {
-	LocalizedValue string `json:"localizedValue"`
-	Value          string `json:"value"`
+	Dimensions []struct {
+		LocalizedValue string `json:"localizedValue"`
+		Value          string `json:"value"`
+	} `json:"dimensions"`
+	ID                   string `json:"id"`
+	IsDimensionRequired  bool   `json:"isDimensionRequired"`
+	MetricAvailabilities []struct {
+		Retention string `json:"retention"`
+		TimeGrain string `json:"timeGrain"`
+	} `json:"metricAvailabilities"`
+	Name struct {
+		LocalizedValue string `json:"localizedValue"`
+		Value          string `json:"value"`
+	} `json:"name"`
+	PrimaryAggregationType string `json:"primaryAggregationType"`
+	ResourceID             string `json:"resourceId"`
+	Unit                   string `json:"unit"`
 }
 
-// AzureMetricValiueResponse represents metric value response for a given metric definition.
-type AzureMetricValiueResponse struct {
-	Value []data `json:"value"`
-}
-type data struct {
-	Data []metricDataPoint `json:"data"`
-	ID   string            `json:"id"`
-	Name dimensionData     `json:"name"`
-	Type string            `json:"type"`
-	Unit string            `json:"unit"`
-}
-type metricDataPoint struct {
-	TimeStamp string  `json:"timeStamp"`
-	Total     float64 `json:"total"`
+// AzureMetricValueResponse represents a metric value response for a given metric definition.
+type AzureMetricValueResponse struct {
+	Value []struct {
+		Data []struct {
+			TimeStamp string  `json:"timeStamp"`
+			Total     float64 `json:"total"`
+		} `json:"data"`
+		ID   string `json:"id"`
+		Name struct {
+			LocalizedValue string `json:"localizedValue"`
+			Value          string `json:"value"`
+		} `json:"name"`
+		Type string `json:"type"`
+		Unit string `json:"unit"`
+	} `json:"value"`
+	APIError struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"error"`
 }
 
 // AzureClient represents our client to talk to the Azure api
@@ -88,7 +90,6 @@ func (ac *AzureClient) getAccessToken() {
 	if err != nil {
 		log.Fatalf("Error reading body of response: %v", err)
 	}
-
 	var data map[string]interface{}
 	err = json.Unmarshal(body, &data)
 	if err != nil {
@@ -130,11 +131,11 @@ func (ac *AzureClient) getMetricDefinitions() map[string]AzureMetricDefinitionRe
 	return definitions
 }
 
-func (ac *AzureClient) getMetricValue(metricName string, target string) AzureMetricValiueResponse {
+func (ac *AzureClient) getMetricValue(metricName string, target string) AzureMetricValueResponse {
 	apiVersion := "2016-09-01"
 	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, target)
-	now, tenMinutesAgo := GetTimes()
-	filter := fmt.Sprintf("(name.value eq '%s') and aggregationType eq 'Total' and startTime eq %s and endTime eq %s", metricName, tenMinutesAgo, now)
+	now, oneMinutesAgo := GetTimes()
+	filter := fmt.Sprintf("(name.value eq '%s') and aggregationType eq 'Total' and startTime eq %s and endTime eq %s", metricName, oneMinutesAgo, now)
 	filter = strings.Replace(filter, " ", "%20", -1)
 	metricValueEndpoint := fmt.Sprintf("https://management.azure.com/%s/providers/microsoft.insights/metrics?$filter=%s&api-version=%s", metricsResource, filter, apiVersion)
 
@@ -153,10 +154,14 @@ func (ac *AzureClient) getMetricValue(metricName string, target string) AzureMet
 		log.Fatalf("Error reading body of response: %v", err)
 	}
 
-	var data AzureMetricValiueResponse
+	var data AzureMetricValueResponse
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		log.Fatalf("Error unmarshalling response body: %v", err)
+	}
+	if data.APIError.Code == "ExpiredAuthenticationToken" {
+		log.Printf("Access token expired. Reathenticating...")
+		ac.getAccessToken()
 	}
 	return data
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -40,7 +39,7 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 // Collect - collect results from Azure Montior API and create Prometheus metrics.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	// Get metric values for all defined metrics
-	var metricValueData AzureMetricValiueResponse
+	var metricValueData AzureMetricValueResponse
 	for _, target := range sc.C.Targets {
 		for _, metric := range target.Metrics {
 			metricValueData = ac.getMetricValue(metric.Name, target.Resource)
@@ -75,7 +74,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-
+	log.Printf("azure_metrics_exporter listening on port %v", *listenAddress)
 	if err := sc.ReloadConfig(*configFile); err != nil {
 		log.Fatalf("Error loading config: %v", err)
 		os.Exit(1)
@@ -87,9 +86,9 @@ func main() {
 	if *listMetricDefinitions {
 		results := ac.getMetricDefinitions()
 		for k, v := range results {
-			fmt.Printf("Resource: %s\n\nAvailable Metrics:\n", strings.Split(k, "/")[6])
+			log.Printf("Resource: %s\n\nAvailable Metrics:\n", strings.Split(k, "/")[6])
 			for _, r := range v.MetricDefinitionResponses {
-				fmt.Printf("- %s\n", r.Name.Value)
+				log.Printf("- %s\n", r.Name.Value)
 			}
 		}
 	}

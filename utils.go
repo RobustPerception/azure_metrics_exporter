@@ -17,11 +17,11 @@ func PrintPrettyJSON(input map[string]interface{}) {
 	fmt.Println(string(out))
 }
 
-// GetTimes - Returns the current time and the time 10 minutes ago.
+// GetTimes - Returns the current time and the time 1 minute ago.
 func GetTimes() (string, string) {
 	now := time.Now().Format(time.RFC3339)
-	tenMinutes := time.Minute * time.Duration(-10)
-	then := time.Now().Add(tenMinutes).Format(time.RFC3339)
+	oneMinute := time.Minute * time.Duration(-1)
+	then := time.Now().Add(oneMinute).Format(time.RFC3339)
 	return now, then
 }
 
