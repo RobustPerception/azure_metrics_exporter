@@ -40,6 +40,9 @@ type AzureMetricValueResponse struct {
 		Data []struct {
 			TimeStamp string  `json:"timeStamp"`
 			Total     float64 `json:"total"`
+			Average   float64 `json:"average"`
+			Minimum   float64 `json:"minimum"`
+			Maximum   float64 `json:"maximum"`
 		} `json:"data"`
 		ID   string `json:"id"`
 		Name struct {
@@ -134,8 +137,8 @@ func (ac *AzureClient) getMetricDefinitions() map[string]AzureMetricDefinitionRe
 func (ac *AzureClient) getMetricValue(metricName string, target string) AzureMetricValueResponse {
 	apiVersion := "2016-09-01"
 	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, target)
-	now, oneMinutesAgo := GetTimes()
-	filter := fmt.Sprintf("(name.value eq '%s') and aggregationType eq 'Total' and startTime eq %s and endTime eq %s", metricName, oneMinutesAgo, now)
+	endTime, startTime := GetTimes()
+	filter := fmt.Sprintf("(name.value eq '%s') and (aggregationType eq 'Total' or aggregationType eq 'Average' or aggregationType eq 'Minimum' or aggregationType eq 'Maximum') and startTime eq %s and endTime eq %s", metricName, startTime, endTime)
 	filter = strings.Replace(filter, " ", "%20", -1)
 	metricValueEndpoint := fmt.Sprintf("https://management.azure.com/%s/providers/microsoft.insights/metrics?$filter=%s&api-version=%s", metricsResource, filter, apiVersion)
 
@@ -144,9 +147,15 @@ func (ac *AzureClient) getMetricValue(metricName string, target string) AzureMet
 		log.Fatalf("Error creating HTTP request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
+
+	log.Printf("GET %s", metricValueEndpoint)
 	resp, err := ac.client.Do(req)
 	if err != nil {
 		log.Fatalf("Error: %v", err)
+	}
+
+	if resp.StatusCode != 200 {
+		log.Fatalf("Unable to query metrics API with status code: %d", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)

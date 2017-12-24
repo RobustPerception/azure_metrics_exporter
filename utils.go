@@ -17,12 +17,15 @@ func PrintPrettyJSON(input map[string]interface{}) {
 	fmt.Println(string(out))
 }
 
-// GetTimes - Returns the current time and the time 1 minute ago.
+// GetTimes - Returns the endTime and startTime used for querying Azure Metrics API
 func GetTimes() (string, string) {
-	now := time.Now().Format(time.RFC3339)
-	oneMinute := time.Minute * time.Duration(-1)
-	then := time.Now().Add(oneMinute).Format(time.RFC3339)
-	return now, then
+	// Make sure we are using UTC
+	now := time.Now().UTC()
+
+	// Use query delay of 3 minutes when querying for latest metric data
+	endTime := now.Add(time.Minute * time.Duration(-3)).Format(time.RFC3339)
+	startTime := now.Add(time.Minute * time.Duration(-4)).Format(time.RFC3339)
+	return endTime, startTime
 }
 
 // CreateResourceLabels - Returns resource labels for a give resource ID.
