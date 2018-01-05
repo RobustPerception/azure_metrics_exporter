@@ -51,13 +51,35 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 				log.Printf("No metric data returned for metric %v at target %v\n", metric.Name, target.Resource)
 				continue
 			}
-			metricName := metricValueData.Value[0].Name.Value
+
+			// Ensure Azure metric names conform to Prometheus metric name conventions
+			metricName := strings.Replace(metricValueData.Value[0].Name.Value, " ", "_", -1)
+			metricName = strings.ToLower(metricName + "_" + metricValueData.Value[0].Unit)
 			metricValue := metricValueData.Value[0].Data[len(metricValueData.Value[0].Data)-1]
 			labels := CreateResourceLabels(metricValueData.Value[0].ID)
+
 			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(metricName, "", nil, labels),
+				prometheus.NewDesc(metricName+"_total", "", nil, labels),
 				prometheus.GaugeValue,
 				metricValue.Total,
+			)
+
+			ch <- prometheus.MustNewConstMetric(
+				prometheus.NewDesc(metricName+"_average", "", nil, labels),
+				prometheus.GaugeValue,
+				metricValue.Average,
+			)
+
+			ch <- prometheus.MustNewConstMetric(
+				prometheus.NewDesc(metricName+"_min", "", nil, labels),
+				prometheus.GaugeValue,
+				metricValue.Minimum,
+			)
+
+			ch <- prometheus.MustNewConstMetric(
+				prometheus.NewDesc(metricName+"_max", "", nil, labels),
+				prometheus.GaugeValue,
+				metricValue.Maximum,
 			)
 		}
 	}
