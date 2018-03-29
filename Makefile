@@ -1,3 +1,5 @@
+# This Makefile has been adapted from the one used by coreos/locksmith.
+
 # kernel-style V=1 build verbosity
 ifeq ("$(origin V)", "command line")
 	BUILD_VERBOSE = $(V)
