@@ -3,5 +3,4 @@
 azure-metrics-exporter
 azure.yml
 notes.txt
-/vendor
 /gopath
