@@ -4,4 +4,5 @@ language: go
 install: true
 
 script:
+ - make vendor
  - make
