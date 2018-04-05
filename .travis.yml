@@ -4,4 +4,8 @@ language: go
 install: true
 
 script:
+ - mkdir -p gopath/src/github.com/RobustPerception/
+ - ln -s $(pwd) gopath/src/github.com/RobustPerception/azure_metrics_exporter
+ - export GOPATH=$(pwd)/gopath
+ - cd $GOPATH
  - make

@@ -10,29 +10,24 @@ ifeq ($(BUILD_VERBOSE),1)
 else
 	Q = @
 endif
-ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-REPO=github.com/RobustPerception/azure_metrics_exporter
-LD_FLAGS="-w -s -extldflags -static"
 
-export GOPATH=$(shell pwd)/gopath
+GO ?= GO15VENDOREXPERIMENT=1 go
+GOPATH := $(firstword $(subst :, ,$(shell $(GO) env GOPATH)))
+PROMU ?= $(GOPATH)/bin/promu
+# This is not an autoconf style prefix, it is the path where promu
+# will place binaries
+PREFIX ?= $(shell pwd)/bin
 
-.PHONY: all
-all: bin/azure_metrics_exporter
+.PHONY: all build clean promu $(PROMU)
 
-gopath:
-	$(Q)mkdir -p gopath/src/github.com/RobustPerception
-	$(Q)ln -s $(ROOT_DIR) gopath/src/$(REPO)
+all: build
 
-GO_SOURCES := $(shell find . -type f -name "*.go")
+build: $(PROMU)
+	$(Q)$(PROMU) build --prefix $(PREFIX)
 
-bin/%: $(GO_SOURCES) | gopath
-	$(Q)go build -o $@ -ldflags $(LD_FLAGS) $(REPO)
 
-.PHONY: vendor
-vendor:
-	$(Q)glide update --strip-vendor
-	$(Q)glide-vc --use-lock-file --no-tests --only-code
+$(GOPATH)/bin/promu promu:
+	$(Q)GOOS= GOARCH= $(GO) get -u github.com/prometheus/promu
 
-.PHONY: clean
 clean:
 	$(Q)rm -rf bin
