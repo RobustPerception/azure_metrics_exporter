@@ -4,4 +4,11 @@ language: go
 install: true
 
 script:
+ - |
+  if [ ! -d $GOPATH/src/github.com/RobustPerception/azure_metrics_exporter ]; then
+    echo "You seem to be building a fork. Linking project to the correct location"
+    mkdir -p $GOPATH/src/github.com/RobustPerception
+    ln -s $(pwd) $GOPATH/src/github.com/RobustPerception/azure_metrics_exporter
+    cd $GOPATH/src/github.com/RobustPerception/azure_metrics_exporter
+  fi
  - make
