@@ -1,13 +1,17 @@
 go:
-    cgo: true
+    cgo: false
 repository:
     path: github.com/RobustPerception/azure_metrics_exporter
 build:
     binaries:
-        - name: azure_metrics_exporter
-    flags: -a -tags 'netgo static_build'
+        - name: azure-metrics-sexporter
+    flags: -a -tags netgo
     ldflags: |
-      -w -s -extldflags -static
+        -X {{repoPath}}/vendor/github.com/prometheus/common/version.Version={{.Version}}
+        -X {{repoPath}}/vendor/github.com/prometheus/common/version.Revision={{.Revision}}
+        -X {{repoPath}}/vendor/github.com/prometheus/common/version.Branch={{.Branch}}
+        -X {{repoPath}}/vendor/github.com/prometheus/common/version.BuildUser={{user}}@{{host}}
+        -X {{repoPath}}/vendor/github.com/prometheus/common/version.BuildDate={{date "20060102-15:04:05"}}
 tarball:
     files:
         - README.md
