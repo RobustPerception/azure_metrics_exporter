@@ -1,0 +1,8 @@
+sudo: false
+language: go
+go_import_path: github.com/RobustPerception/azure_metrics_exporter
+
+install: true
+
+script:
+ - make
