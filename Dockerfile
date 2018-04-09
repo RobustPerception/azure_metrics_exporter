@@ -1,5 +1,8 @@
-FROM debian:9-slim
-RUN apt-get update && apt-get install -yq --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY bin/azure_metrics_exporter /azure_metrics_exporter
-EXPOSE      9276
-ENTRYPOINT  [ "/azure_metrics_exporter" ]
+
+FROM quay.io/prometheus/busybox:latest
+
+COPY azure-metrics-exporter /bin/azure-metrics-exporter
+
+EXPOSE 9276
+ENTRYPOINT ["/bin/azure-metrics-exporter"]
+
