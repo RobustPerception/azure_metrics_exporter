@@ -4,7 +4,7 @@ repository:
     path: github.com/RobustPerception/azure_metrics_exporter
 build:
     binaries:
-        - name: azure-metrics-sexporter
+        - name: azure-metrics-exporter
     flags: -a -tags netgo
     ldflags: |
         -X {{repoPath}}/vendor/github.com/prometheus/common/version.Version={{.Version}}
