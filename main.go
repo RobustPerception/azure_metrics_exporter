@@ -41,21 +41,18 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	// Get metric values for all defined metrics
 	var metricValueData AzureMetricValueResponse
 	for _, target := range sc.C.Targets {
-		metrics := ""
+		metrics := []string{}
 		for _, metric := range target.Metrics {
-			if metrics == "" {
-				metrics = metric.Name
-			} else {
-				metrics += "," + metric.Name
-			}
+			metrics = append(metrics, metric.Name)
 		}
-		metricValueData = ac.getMetricValue(metrics, target.Resource)
+		metricsStr := strings.Join(metrics, ",")
+		metricValueData = ac.getMetricValue(metricsStr, target.Resource)
 		if metricValueData.Value == nil {
-			log.Printf("Metric %v not found at target %v\n", metrics, target.Resource)
+			log.Printf("Metric %v not found at target %v\n", metricsStr, target.Resource)
 			continue
 		}
 		if len(metricValueData.Value[0].Timeseries[0].Data) == 0 {
-			log.Printf("No metric data returned for metric %v at target %v\n", metrics, target.Resource)
+			log.Printf("No metric data returned for metric %v at target %v\n", metricsStr, target.Resource)
 			continue
 		}
 
