@@ -85,11 +85,11 @@ func (ac *AzureClient) getAccessToken() {
 	if err != nil {
 		log.Fatalf("Error authenticating against Azure API: %v", err)
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		log.Fatalf("Did not get status code 200, got: %d", resp.StatusCode)
 	}
 
-	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatalf("Error reading body of response: %v", err)
