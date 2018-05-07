@@ -63,6 +63,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			// Ensure Azure metric names conform to Prometheus metric name conventions
 			metricName := strings.Replace(value.Name.Value, " ", "_", -1)
 			metricName = strings.ToLower(metricName + "_" + value.Unit)
+			metricName = strings.Replace(metricName, "/", "_per_", -1)
 			metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
 			labels := CreateResourceLabels(value.ID)
 
