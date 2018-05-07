@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/RobustPerception/azure_metrics_exporter/config"
@@ -22,6 +23,7 @@ var (
 	configFile            = kingpin.Flag("config.file", "Azure exporter configuration file.").Default("azure.yml").String()
 	listenAddress         = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9276").String()
 	listMetricDefinitions = kingpin.Flag("list.definitions", "Whether or not to list available metric definitions for the given resources.").Bool()
+	invalidMetricChars    = regexp.MustCompile("[^a-zA-Z0-9_:]")
 )
 
 func init() {
@@ -61,6 +63,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			metricName := strings.Replace(value.Name.Value, " ", "_", -1)
 			metricName = strings.ToLower(metricName + "_" + value.Unit)
 			metricName = strings.Replace(metricName, "/", "_per_", -1)
+			metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
 			metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
 			labels := CreateResourceLabels(value.ID)
 
