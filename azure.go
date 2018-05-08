@@ -119,7 +119,7 @@ func (ac *AzureClient) getMetricDefinitions() map[string]AzureMetricDefinitionRe
 		if err != nil {
 			log.Fatalf("Error: %v", err)
 		}
-
+		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			log.Fatalf("Error reading body of response: %v", err)
@@ -163,7 +163,7 @@ func (ac *AzureClient) getMetricValue(metricNames string, target string) AzureMe
 	if err != nil {
 		log.Fatalf("Error: %v", err)
 	}
-
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		log.Fatalf("Unable to query metrics API with status code: %d", resp.StatusCode)
 	}
