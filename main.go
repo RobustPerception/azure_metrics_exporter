@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/RobustPerception/azure_metrics_exporter/config"
@@ -22,6 +23,7 @@ var (
 	configFile            = kingpin.Flag("config.file", "Azure exporter configuration file.").Default("azure.yml").String()
 	listenAddress         = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9276").String()
 	listMetricDefinitions = kingpin.Flag("list.definitions", "Whether or not to list available metric definitions for the given resources.").Bool()
+	invalidMetricChars    = regexp.MustCompile("[^a-zA-Z0-9_:]")
 )
 
 func init() {
@@ -41,22 +43,29 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	// Get metric values for all defined metrics
 	var metricValueData AzureMetricValueResponse
 	for _, target := range sc.C.Targets {
+		metrics := []string{}
 		for _, metric := range target.Metrics {
-			metricValueData = ac.getMetricValue(metric.Name, target.Resource)
-			if metricValueData.Value == nil {
-				log.Printf("Metric %v not found at target %v\n", metric.Name, target.Resource)
-				continue
-			}
-			if len(metricValueData.Value[0].Data) == 0 {
-				log.Printf("No metric data returned for metric %v at target %v\n", metric.Name, target.Resource)
-				continue
-			}
+			metrics = append(metrics, metric.Name)
+		}
+		metricsStr := strings.Join(metrics, ",")
+		metricValueData = ac.getMetricValue(metricsStr, target.Resource)
+		if metricValueData.Value == nil {
+			log.Printf("Metric %v not found at target %v\n", metricsStr, target.Resource)
+			continue
+		}
+		if len(metricValueData.Value[0].Timeseries[0].Data) == 0 {
+			log.Printf("No metric data returned for metric %v at target %v\n", metricsStr, target.Resource)
+			continue
+		}
 
+		for _, value := range metricValueData.Value {
 			// Ensure Azure metric names conform to Prometheus metric name conventions
-			metricName := strings.Replace(metricValueData.Value[0].Name.Value, " ", "_", -1)
-			metricName = strings.ToLower(metricName + "_" + metricValueData.Value[0].Unit)
-			metricValue := metricValueData.Value[0].Data[len(metricValueData.Value[0].Data)-1]
-			labels := CreateResourceLabels(metricValueData.Value[0].ID)
+			metricName := strings.Replace(value.Name.Value, " ", "_", -1)
+			metricName = strings.ToLower(metricName + "_" + value.Unit)
+			metricName = strings.Replace(metricName, "/", "_per_", -1)
+			metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
+			metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
+			labels := CreateResourceLabels(value.ID)
 
 			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc(metricName+"_total", "", nil, labels),

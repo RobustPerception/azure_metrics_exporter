@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strings"
 )
 
 // AzureMetricDefinitionResponse represents metric definition response for a given resource from Azure.
@@ -37,13 +36,15 @@ type metricDefinitionResponse struct {
 // AzureMetricValueResponse represents a metric value response for a given metric definition.
 type AzureMetricValueResponse struct {
 	Value []struct {
-		Data []struct {
-			TimeStamp string  `json:"timeStamp"`
-			Total     float64 `json:"total"`
-			Average   float64 `json:"average"`
-			Minimum   float64 `json:"minimum"`
-			Maximum   float64 `json:"maximum"`
-		} `json:"data"`
+		Timeseries []struct {
+			Data []struct {
+				TimeStamp string  `json:"timeStamp"`
+				Total     float64 `json:"total"`
+				Average   float64 `json:"average"`
+				Minimum   float64 `json:"minimum"`
+				Maximum   float64 `json:"maximum"`
+			} `json:"data"`
+		} `json:"timeseries"`
 		ID   string `json:"id"`
 		Name struct {
 			LocalizedValue string `json:"localizedValue"`
@@ -84,11 +85,11 @@ func (ac *AzureClient) getAccessToken() {
 	if err != nil {
 		log.Fatalf("Error authenticating against Azure API: %v", err)
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		log.Fatalf("Did not get status code 200, got: %d", resp.StatusCode)
 	}
 
-	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatalf("Error reading body of response: %v", err)
@@ -103,7 +104,7 @@ func (ac *AzureClient) getAccessToken() {
 
 // Loop through all specified resource targets and get their respective metric definitions.
 func (ac *AzureClient) getMetricDefinitions() map[string]AzureMetricDefinitionResponse {
-	apiVersion := "2016-03-01"
+	apiVersion := "2018-01-01"
 	definitions := make(map[string]AzureMetricDefinitionResponse)
 
 	for _, target := range sc.C.Targets {
@@ -118,7 +119,7 @@ func (ac *AzureClient) getMetricDefinitions() map[string]AzureMetricDefinitionRe
 		if err != nil {
 			log.Fatalf("Error: %v", err)
 		}
-
+		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			log.Fatalf("Error reading body of response: %v", err)
@@ -134,13 +135,12 @@ func (ac *AzureClient) getMetricDefinitions() map[string]AzureMetricDefinitionRe
 	return definitions
 }
 
-func (ac *AzureClient) getMetricValue(metricName string, target string) AzureMetricValueResponse {
-	apiVersion := "2016-09-01"
+func (ac *AzureClient) getMetricValue(metricNames string, target string) AzureMetricValueResponse {
+	apiVersion := "2018-01-01"
 	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, target)
 	endTime, startTime := GetTimes()
-	filter := fmt.Sprintf("(name.value eq '%s') and (aggregationType eq 'Total' or aggregationType eq 'Average' or aggregationType eq 'Minimum' or aggregationType eq 'Maximum') and startTime eq %s and endTime eq %s", metricName, startTime, endTime)
-	filter = strings.Replace(filter, " ", "%20", -1)
-	metricValueEndpoint := fmt.Sprintf("https://management.azure.com/%s/providers/microsoft.insights/metrics?$filter=%s&api-version=%s", metricsResource, filter, apiVersion)
+
+	metricValueEndpoint := fmt.Sprintf("https://management.azure.com/%s/providers/microsoft.insights/metrics", metricsResource)
 
 	req, err := http.NewRequest("GET", metricValueEndpoint, nil)
 	if err != nil {
@@ -148,12 +148,22 @@ func (ac *AzureClient) getMetricValue(metricName string, target string) AzureMet
 	}
 	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
 
-	log.Printf("GET %s", metricValueEndpoint)
+	values := url.Values{}
+	if metricNames != "" {
+		values.Add("metricnames", metricNames)
+	}
+	values.Add("aggregation", "Total,Average,Minimum,Maximum")
+	values.Add("timespan", fmt.Sprintf("%s/%s", startTime, endTime))
+	values.Add("api-version", apiVersion)
+
+	req.URL.RawQuery = values.Encode()
+
+	log.Printf("GET %s", req.URL)
 	resp, err := ac.client.Do(req)
 	if err != nil {
 		log.Fatalf("Error: %v", err)
 	}
-
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		log.Fatalf("Unable to query metrics API with status code: %d", resp.StatusCode)
 	}
