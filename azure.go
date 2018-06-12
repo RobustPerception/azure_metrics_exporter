@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 // AzureMetricDefinitionResponse represents metric definition response for a given resource from Azure.
@@ -61,15 +62,17 @@ type AzureMetricValueResponse struct {
 
 // AzureClient represents our client to talk to the Azure api
 type AzureClient struct {
-	client      *http.Client
-	accessToken string
+	client               *http.Client
+	accessToken          string
+	accessTokenCreatedAt time.Time
 }
 
 // NewAzureClient returns an Azure client to talk the Azure API
 func NewAzureClient() *AzureClient {
 	return &AzureClient{
-		client:      &http.Client{},
-		accessToken: "",
+		client:               &http.Client{},
+		accessToken:          "",
+		accessTokenCreatedAt: time.Time{},
 	}
 }
 
@@ -100,6 +103,7 @@ func (ac *AzureClient) getAccessToken() {
 		log.Fatalf("Error unmarshalling response body: %v", err)
 	}
 	ac.accessToken = data["access_token"].(string)
+	ac.accessTokenCreatedAt = time.Now().UTC()
 }
 
 // Loop through all specified resource targets and get their respective metric definitions.
@@ -137,6 +141,12 @@ func (ac *AzureClient) getMetricDefinitions() map[string]AzureMetricDefinitionRe
 
 func (ac *AzureClient) getMetricValue(metricNames string, target string) AzureMetricValueResponse {
 	apiVersion := "2018-01-01"
+	now := time.Now().UTC()
+	expiresAt := ac.accessTokenCreatedAt.Add(30 * time.Minute)
+	if now.After(expiresAt) {
+		ac.getAccessToken()
+	}
+
 	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, target)
 	endTime, startTime := GetTimes()
 
@@ -177,10 +187,6 @@ func (ac *AzureClient) getMetricValue(metricNames string, target string) AzureMe
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		log.Fatalf("Error unmarshalling response body: %v", err)
-	}
-	if data.APIError.Code == "ExpiredAuthenticationToken" {
-		log.Printf("Access token expired. Reathenticating...")
-		ac.getAccessToken()
 	}
 	return data
 }
