@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 )
 
@@ -64,7 +65,7 @@ type AzureMetricValueResponse struct {
 type AzureClient struct {
 	client               *http.Client
 	accessToken          string
-	accessTokenCreatedAt time.Time
+	accessTokenExpiresOn time.Time
 }
 
 // NewAzureClient returns an Azure client to talk the Azure API
@@ -72,7 +73,7 @@ func NewAzureClient() *AzureClient {
 	return &AzureClient{
 		client:               &http.Client{},
 		accessToken:          "",
-		accessTokenCreatedAt: time.Time{},
+		accessTokenExpiresOn: time.Time{},
 	}
 }
 
@@ -103,7 +104,11 @@ func (ac *AzureClient) getAccessToken() {
 		log.Fatalf("Error unmarshalling response body: %v", err)
 	}
 	ac.accessToken = data["access_token"].(string)
-	ac.accessTokenCreatedAt = time.Now().UTC()
+	expiresOn, err := strconv.ParseInt(data["expires_on"].(string), 10, 64)
+	if err != nil {
+		log.Fatalf("Error ParseInt of expires_on failed: %v", err)
+	}
+	ac.accessTokenExpiresOn = time.Unix(expiresOn, 0).UTC()
 }
 
 // Loop through all specified resource targets and get their respective metric definitions.
@@ -142,8 +147,8 @@ func (ac *AzureClient) getMetricDefinitions() map[string]AzureMetricDefinitionRe
 func (ac *AzureClient) getMetricValue(metricNames string, target string) AzureMetricValueResponse {
 	apiVersion := "2018-01-01"
 	now := time.Now().UTC()
-	expiresAt := ac.accessTokenCreatedAt.Add(30 * time.Minute)
-	if now.After(expiresAt) {
+	refreshAt := ac.accessTokenExpiresOn.Add(-10 * time.Minute)
+	if now.After(refreshAt) {
 		ac.getAccessToken()
 	}
 
