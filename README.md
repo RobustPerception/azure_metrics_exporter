@@ -8,7 +8,7 @@ Allows for the exporting of metrics from Azure applications using the [Azure mon
 
 # Rate limits
 
-Note that Azure imposes a [15,000 API read limit](https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-manager-request-limits) so the number of metrics you're querying for should be proportional to your scrape interval.
+Note that Azure imposes an [API read limit of 15,000 requests per hour](https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-manager-request-limits) so the number of metrics you're querying for should be proportional to your scrape interval.
 
 # Retrieving Metric definitions
 
