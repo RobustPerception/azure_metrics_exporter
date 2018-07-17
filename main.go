@@ -66,29 +66,38 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
 			metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
 			labels := CreateResourceLabels(value.ID)
+			var labelNames = []string{"resource_group", "resource_name"}
 
 			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(metricName+"_total", "", nil, labels),
+				prometheus.NewDesc(metricName+"_total", "", labelNames, nil),
 				prometheus.GaugeValue,
 				metricValue.Total,
+				labels["resource_group"],
+				labels["resource_name"],
 			)
 
 			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(metricName+"_average", "", nil, labels),
+				prometheus.NewDesc(metricName+"_average", "", labelNames, nil),
 				prometheus.GaugeValue,
 				metricValue.Average,
+				labels["resource_group"],
+				labels["resource_name"],
 			)
 
 			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(metricName+"_min", "", nil, labels),
+				prometheus.NewDesc(metricName+"_min", "", labelNames, nil),
 				prometheus.GaugeValue,
 				metricValue.Minimum,
+				labels["resource_group"],
+				labels["resource_name"],
 			)
 
 			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(metricName+"_max", "", nil, labels),
+				prometheus.NewDesc(metricName+"_max", "", labelNames, nil),
 				prometheus.GaugeValue,
 				metricValue.Maximum,
+				labels["resource_group"],
+				labels["resource_name"],
 			)
 		}
 	}
@@ -105,7 +114,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-	log.Printf("azure_metrics_exporter listening on port %v", *listenAddress)
+	log.Printf("azure_metrics_exporter 2 is now listening on port %v", *listenAddress)
 	if err := sc.ReloadConfig(*configFile); err != nil {
 		log.Fatalf("Error loading config: %v", err)
 		os.Exit(1)
