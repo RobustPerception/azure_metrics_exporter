@@ -133,6 +133,9 @@ func (ac *AzureClient) getMetricDefinitions() map[string]AzureMetricDefinitionRe
 		if err != nil {
 			log.Fatalf("Error reading body of response: %v", err)
 		}
+		if resp.StatusCode != http.StatusOK {
+			log.Fatalf("Error: %v", string(body))
+		}
 
 		def := AzureMetricDefinitionResponse{}
 		err = json.Unmarshal(body, &def)
