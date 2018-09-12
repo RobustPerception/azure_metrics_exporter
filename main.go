@@ -68,25 +68,25 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			labels := CreateResourceLabels(value.ID)
 
 			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(metricName+"_total", "", nil, labels),
+				prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
 				prometheus.GaugeValue,
 				metricValue.Total,
 			)
 
 			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(metricName+"_average", "", nil, labels),
+				prometheus.NewDesc(metricName+"_average", metricName+"_average", nil, labels),
 				prometheus.GaugeValue,
 				metricValue.Average,
 			)
 
 			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(metricName+"_min", "", nil, labels),
+				prometheus.NewDesc(metricName+"_min", metricName+"_min", nil, labels),
 				prometheus.GaugeValue,
 				metricValue.Minimum,
 			)
 
 			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(metricName+"_max", "", nil, labels),
+				prometheus.NewDesc(metricName+"_max", metricName+"_max", nil, labels),
 				prometheus.GaugeValue,
 				metricValue.Maximum,
 			)
