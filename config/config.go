@@ -56,8 +56,9 @@ type Credentials struct {
 
 // Target represents Azure target resource and its associated metric definitions
 type Target struct {
-	Resource string   `yaml:"resource"`
-	Metrics  []Metric `yaml:"metrics"`
+	Resource     string   `yaml:"resource"`
+	Metrics      []Metric `yaml:"metrics"`
+	Aggregations []string `yaml:"aggregations"`
 
 	XXX map[string]interface{} `yaml:",inline"`
 }
