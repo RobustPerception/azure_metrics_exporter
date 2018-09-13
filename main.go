@@ -22,7 +22,7 @@ var (
 	ac                    = NewAzureClient()
 	configFile            = kingpin.Flag("config.file", "Azure exporter configuration file.").Default("azure.yml").String()
 	listenAddress         = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9276").String()
-	listMetricDefinitions = kingpin.Flag("list.definitions", "Whether or not to list available metric definitions for the given resources.").Bool()
+	listMetricDefinitions = kingpin.Flag("list.definitions", "List available metric definitions for the given resources and exit.").Bool()
 	invalidMetricChars    = regexp.MustCompile("[^a-zA-Z0-9_:]")
 )
 
@@ -105,7 +105,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-	log.Printf("azure_metrics_exporter listening on port %v", *listenAddress)
 	if err := sc.ReloadConfig(*configFile); err != nil {
 		log.Fatalf("Error loading config: %v", err)
 		os.Exit(1)
@@ -122,6 +121,7 @@ func main() {
 				log.Printf("- %s\n", r.Name.Value)
 			}
 		}
+		os.Exit(0)
 	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -137,6 +137,7 @@ func main() {
 	})
 
 	http.HandleFunc("/metrics", handler)
+	log.Printf("azure_metrics_exporter listening on port %v", *listenAddress)
 	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
 		log.Fatalf("Error starting HTTP server: %v", err)
 		os.Exit(1)
