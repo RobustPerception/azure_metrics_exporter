@@ -37,10 +37,34 @@ func (sc *SafeConfig) ReloadConfig(confFile string) (err error) {
 		return fmt.Errorf("Error parsing config file: %s", err)
 	}
 
+	if err := c.Validate(); err != nil {
+		return fmt.Errorf("Error validating config file: %s", err)
+	}
+
 	sc.Lock()
 	sc.C = c
 	sc.Unlock()
 
+	return nil
+}
+
+var validAggregations = []string{"Total", "Average", "Minimum", "Maximum"}
+
+func (c *Config) Validate() (err error) {
+	for _, t := range c.Targets {
+		for _, a := range t.Aggregations {
+			ok := false
+			for _, valid := range validAggregations {
+				if a == valid {
+					ok = true
+					break
+				}
+			}
+			if !ok {
+				return fmt.Errorf("%s is not one of the valid aggregations (%v)", a, validAggregations)
+			}
+		}
+	}
 	return nil
 }
 

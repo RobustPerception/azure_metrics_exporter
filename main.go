@@ -67,7 +67,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
 			labels := CreateResourceLabels(value.ID)
 
-			if hasAggregation(target, "total") {
+			if hasAggregation(target, "Total") {
 				ch <- prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
 					prometheus.GaugeValue,
@@ -75,7 +75,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 				)
 			}
 
-			if hasAggregation(target, "average") {
+			if hasAggregation(target, "Average") {
 				ch <- prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_average", metricName+"_average", nil, labels),
 					prometheus.GaugeValue,
@@ -83,7 +83,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 				)
 			}
 
-			if hasAggregation(target, "minimum") {
+			if hasAggregation(target, "Minimum") {
 
 				ch <- prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_min", metricName+"_min", nil, labels),
@@ -92,7 +92,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 				)
 			}
 
-			if hasAggregation(target, "maximum") {
+			if hasAggregation(target, "Maximum") {
 				ch <- prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_max", metricName+"_max", nil, labels),
 					prometheus.GaugeValue,

@@ -40,7 +40,7 @@ func CreateResourceLabels(resourceID string) map[string]string {
 
 func hasAggregation(t config.Target, aggregation string) bool {
 	for _, aggr := range t.Aggregations {
-		if strings.ToLower(aggr) == strings.ToLower(aggregation) {
+		if aggr == aggregation {
 			return true
 		}
 	}

@@ -170,7 +170,7 @@ func (ac *AzureClient) getMetricValue(metricNames string, target config.Target) 
 	if metricNames != "" {
 		values.Add("metricnames", metricNames)
 	}
-	if target.Aggregations != nil && len(target.Aggregations) > 0 {
+	if len(target.Aggregations) > 0 {
 		values.Add("aggregation", strings.Join(target.Aggregations, ","))
 	} else {
 		values.Add("aggregation", "Total,Average,Minimum,Maximum")
