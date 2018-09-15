@@ -6,6 +6,8 @@ import (
 	"log"
 	"strings"
 	"time"
+
+	"github.com/RobustPerception/azure_metrics_exporter/config"
 )
 
 // PrintPrettyJSON - Prints structs nicely for debugging.
@@ -34,4 +36,13 @@ func CreateResourceLabels(resourceID string) map[string]string {
 	labels["resource_group"] = strings.Split(resourceID, "/")[4]
 	labels["resource_name"] = strings.Split(resourceID, "/")[8]
 	return labels
+}
+
+func hasAggregation(t config.Target, aggregation string) bool {
+	for _, aggr := range t.Aggregations {
+		if aggr == aggregation {
+			return true
+		}
+	}
+	return false
 }

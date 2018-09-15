@@ -43,10 +43,16 @@ targets:
     - name: "BytesReceived"
     - name: "BytesSent"
   - resource: "azure_resource_id"
+    aggregations:
+    - Minimum
+    - Maximum
+    - Average
     metrics:
     - name: "Http2xx"
     - name: "Http5xx"
 ```
+
+By default, all aggregations are returned (`Total`, `Maximum`, `Average`, `Minimum`). It can be overridden per resource.
 
 # Example Prometheus config
 
