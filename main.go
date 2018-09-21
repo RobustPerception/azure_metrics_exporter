@@ -123,7 +123,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	ac.getAccessToken()
+	err := ac.getAccessToken()
+	if err != nil {
+		log.Fatalf("Failed to get token: %v", err)
+	}
 
 	// Print list of available metric definitions for each resource to console if specified.
 	if *listMetricDefinitions {

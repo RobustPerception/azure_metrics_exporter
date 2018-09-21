@@ -157,7 +157,10 @@ func (ac *AzureClient) getMetricValue(metricNames string, target config.Target) 
 	now := time.Now().UTC()
 	refreshAt := ac.accessTokenExpiresOn.Add(-10 * time.Minute)
 	if now.After(refreshAt) {
-		ac.getAccessToken()
+		err := ac.getAccessToken()
+		if err != nil {
+			return AzureMetricValueResponse{}, fmt.Errorf("Error refreshing access token: %v", err)
+		}
 	}
 
 	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, target.Resource)
