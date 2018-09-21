@@ -64,6 +64,10 @@ func (c *Config) Validate() (err error) {
 				return fmt.Errorf("%s is not one of the valid aggregations (%v)", a, validAggregations)
 			}
 		}
+
+		if !strings.HasPrefix(t.Resource, "/") {
+			return fmt.Errorf("Resource path %q must start with a /", t.Resource)
+		}
 	}
 	return nil
 }
