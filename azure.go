@@ -80,7 +80,7 @@ func NewAzureClient() *AzureClient {
 	}
 }
 
-func (ac *AzureClient) getAccessToken() {
+func (ac *AzureClient) getAccessToken() error {
 	target := fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/token", sc.C.Credentials.TenantID)
 	form := url.Values{
 		"grant_type":    {"client_credentials"},
@@ -90,32 +90,34 @@ func (ac *AzureClient) getAccessToken() {
 	}
 	resp, err := ac.client.PostForm(target, form)
 	if err != nil {
-		log.Fatalf("Error authenticating against Azure API: %v", err)
+		return fmt.Errorf("Error authenticating against Azure API: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		log.Fatalf("Did not get status code 200, got: %d", resp.StatusCode)
+		return fmt.Errorf("Did not get status code 200, got: %d", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalf("Error reading body of response: %v", err)
+		return fmt.Errorf("Error reading body of response: %v", err)
 	}
 	var data map[string]interface{}
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		log.Fatalf("Error unmarshalling response body: %v", err)
+		return fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
 	ac.accessToken = data["access_token"].(string)
 	expiresOn, err := strconv.ParseInt(data["expires_on"].(string), 10, 64)
 	if err != nil {
-		log.Fatalf("Error ParseInt of expires_on failed: %v", err)
+		return fmt.Errorf("Error ParseInt of expires_on failed: %v", err)
 	}
 	ac.accessTokenExpiresOn = time.Unix(expiresOn, 0).UTC()
+
+	return nil
 }
 
 // Loop through all specified resource targets and get their respective metric definitions.
-func (ac *AzureClient) getMetricDefinitions() map[string]AzureMetricDefinitionResponse {
+func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionResponse, error) {
 	apiVersion := "2018-01-01"
 	definitions := make(map[string]AzureMetricDefinitionResponse)
 
@@ -124,38 +126,41 @@ func (ac *AzureClient) getMetricDefinitions() map[string]AzureMetricDefinitionRe
 		metricsTarget := fmt.Sprintf("https://management.azure.com/%s/providers/microsoft.insights/metricDefinitions?api-version=%s", metricsResource, apiVersion)
 		req, err := http.NewRequest("GET", metricsTarget, nil)
 		if err != nil {
-			log.Fatalf("Error creating HTTP request: %v", err)
+			return nil, fmt.Errorf("Error creating HTTP request: %v", err)
 		}
 		req.Header.Set("Authorization", "Bearer "+ac.accessToken)
 		resp, err := ac.client.Do(req)
 		if err != nil {
-			log.Fatalf("Error: %v", err)
+			return nil, fmt.Errorf("Error: %v", err)
 		}
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Fatalf("Error reading body of response: %v", err)
+			return nil, fmt.Errorf("Error reading body of response: %v", err)
 		}
 		if resp.StatusCode != http.StatusOK {
-			log.Fatalf("Error: %v", string(body))
+			return nil, fmt.Errorf("Error: %v", string(body))
 		}
 
 		def := AzureMetricDefinitionResponse{}
 		err = json.Unmarshal(body, &def)
 		if err != nil {
-			log.Fatalf("Error unmarshalling response body: %v", err)
+			return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
 		}
 		definitions[target.Resource] = def
 	}
-	return definitions
+	return definitions, nil
 }
 
-func (ac *AzureClient) getMetricValue(metricNames string, target config.Target) AzureMetricValueResponse {
+func (ac *AzureClient) getMetricValue(metricNames string, target config.Target) (AzureMetricValueResponse, error) {
 	apiVersion := "2018-01-01"
 	now := time.Now().UTC()
 	refreshAt := ac.accessTokenExpiresOn.Add(-10 * time.Minute)
 	if now.After(refreshAt) {
-		ac.getAccessToken()
+		err := ac.getAccessToken()
+		if err != nil {
+			return AzureMetricValueResponse{}, fmt.Errorf("Error refreshing access token: %v", err)
+		}
 	}
 
 	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, target.Resource)
@@ -165,7 +170,7 @@ func (ac *AzureClient) getMetricValue(metricNames string, target config.Target) 
 
 	req, err := http.NewRequest("GET", metricValueEndpoint, nil)
 	if err != nil {
-		log.Fatalf("Error creating HTTP request: %v", err)
+		return AzureMetricValueResponse{}, fmt.Errorf("Error creating HTTP request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
 
@@ -186,22 +191,23 @@ func (ac *AzureClient) getMetricValue(metricNames string, target config.Target) 
 	log.Printf("GET %s", req.URL)
 	resp, err := ac.client.Do(req)
 	if err != nil {
-		log.Fatalf("Error: %v", err)
+		return AzureMetricValueResponse{}, fmt.Errorf("Error: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		log.Fatalf("Unable to query metrics API with status code: %d", resp.StatusCode)
+		return AzureMetricValueResponse{}, fmt.Errorf("Unable to query metrics API with status code: %d", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalf("Error reading body of response: %v", err)
+		return AzureMetricValueResponse{}, fmt.Errorf("Error reading body of response: %v", err)
 	}
 
 	var data AzureMetricValueResponse
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		log.Fatalf("Error unmarshalling response body: %v", err)
+		return AzureMetricValueResponse{}, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
-	return data
+
+	return data, nil
 }

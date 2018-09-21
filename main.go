@@ -41,14 +41,18 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 // Collect - collect results from Azure Montior API and create Prometheus metrics.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	// Get metric values for all defined metrics
-	var metricValueData AzureMetricValueResponse
 	for _, target := range sc.C.Targets {
 		metrics := []string{}
 		for _, metric := range target.Metrics {
 			metrics = append(metrics, metric.Name)
 		}
 		metricsStr := strings.Join(metrics, ",")
-		metricValueData = ac.getMetricValue(metricsStr, target)
+		metricValueData, err := ac.getMetricValue(metricsStr, target)
+		if err != nil {
+			log.Printf("Failed to get metrics for target %s: %v", target.Resource, err)
+			continue
+		}
+
 		if metricValueData.Value == nil {
 			log.Printf("Metric %v not found at target %v\n", metricsStr, target.Resource)
 			continue
@@ -119,11 +123,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	ac.getAccessToken()
+	err := ac.getAccessToken()
+	if err != nil {
+		log.Fatalf("Failed to get token: %v", err)
+	}
 
 	// Print list of available metric definitions for each resource to console if specified.
 	if *listMetricDefinitions {
-		results := ac.getMetricDefinitions()
+		results, err := ac.getMetricDefinitions()
+		if err != nil {
+			log.Fatalf("Failed to fetch metric definitions: %v", err)
+		}
+
 		for k, v := range results {
 			log.Printf("Resource: %s\n\nAvailable Metrics:\n", strings.Split(k, "/")[6])
 			for _, r := range v.MetricDefinitionResponses {
