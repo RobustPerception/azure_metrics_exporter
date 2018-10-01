@@ -1,23 +1,11 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"log"
 	"strings"
 	"time"
 
 	"github.com/RobustPerception/azure_metrics_exporter/config"
 )
-
-// PrintPrettyJSON - Prints structs nicely for debugging.
-func PrintPrettyJSON(input map[string]interface{}) {
-	out, err := json.MarshalIndent(input, "", "\t")
-	if err != nil {
-		log.Fatalf("Error indenting JSON: %v", err)
-	}
-	fmt.Println(string(out))
-}
 
 // GetTimes - Returns the endTime and startTime used for querying Azure Metrics API
 func GetTimes() (string, string) {

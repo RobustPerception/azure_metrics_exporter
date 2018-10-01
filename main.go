@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -10,6 +9,7 @@ import (
 	"github.com/RobustPerception/azure_metrics_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
 
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
@@ -49,16 +49,16 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		metricsStr := strings.Join(metrics, ",")
 		metricValueData, err := ac.getMetricValue(metricsStr, target)
 		if err != nil {
-			log.Printf("Failed to get metrics for target %s: %v", target.Resource, err)
+			log.Warnf("Failed to get metrics for target %s: %v", target.Resource, err)
 			continue
 		}
 
 		if metricValueData.Value == nil {
-			log.Printf("Metric %v not found at target %v\n", metricsStr, target.Resource)
+			log.Warnf("Metric %v not found at target %v\n", metricsStr, target.Resource)
 			continue
 		}
 		if len(metricValueData.Value[0].Timeseries[0].Data) == 0 {
-			log.Printf("No metric data returned for metric %v at target %v\n", metricsStr, target.Resource)
+			log.Warnf("No metric data returned for metric %v at target %v\n", metricsStr, target.Resource)
 			continue
 		}
 
@@ -88,7 +88,6 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			}
 
 			if hasAggregation(target, "Minimum") {
-
 				ch <- prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_min", metricName+"_min", nil, labels),
 					prometheus.GaugeValue,
@@ -116,6 +115,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	log.AddFlags(kingpin.CommandLine)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 	if err := sc.ReloadConfig(*configFile); err != nil {
@@ -136,9 +136,9 @@ func main() {
 		}
 
 		for k, v := range results {
-			log.Printf("Resource: %s\n\nAvailable Metrics:\n", strings.Split(k, "/")[6])
+			log.Infof("Resource: %s\n\nAvailable Metrics:\n", strings.Split(k, "/")[6])
 			for _, r := range v.MetricDefinitionResponses {
-				log.Printf("- %s\n", r.Name.Value)
+				log.Infof("- %s\n", r.Name.Value)
 			}
 		}
 		os.Exit(0)
@@ -157,7 +157,7 @@ func main() {
 	})
 
 	http.HandleFunc("/metrics", handler)
-	log.Printf("azure_metrics_exporter listening on port %v", *listenAddress)
+	log.Infof("azure_metrics_exporter listening on port %v", *listenAddress)
 	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
 		log.Fatalf("Error starting HTTP server: %v", err)
 		os.Exit(1)

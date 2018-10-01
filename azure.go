@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/RobustPerception/azure_metrics_exporter/config"
+	"github.com/prometheus/common/log"
 )
 
 // AzureMetricDefinitionResponse represents metric definition response for a given resource from Azure.
@@ -188,7 +188,7 @@ func (ac *AzureClient) getMetricValue(metricNames string, target config.Target) 
 
 	req.URL.RawQuery = values.Encode()
 
-	log.Printf("GET %s", req.URL)
+	log.Infof("GET %s", req.URL)
 	resp, err := ac.client.Do(req)
 	if err != nil {
 		return AzureMetricValueResponse{}, fmt.Errorf("Error: %v", err)
