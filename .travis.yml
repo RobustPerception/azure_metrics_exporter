@@ -4,5 +4,32 @@ go_import_path: github.com/RobustPerception/azure_metrics_exporter
 
 install: true
 
-script:
- - make
+script: echo "Building azure_metrics_exporter"
+
+jobs:
+  include:
+    - stage: build
+      name: Build
+      script:
+        - make promu
+        - promu crossbuild
+        - ln -s .build/linux-amd64/azure_metrics_exporter azure_metrics_exporter
+        - make docker
+
+    - if: branch = master
+      name: Publish Docker image of master
+      script:
+        - make build
+        - make docker
+        - make docker-publish
+
+    - if: tag =~ /^v.+/
+      name: Publish binary and Docker releases
+      script:
+        - curl -sSL 'https://github.com/aktau/github-release/releases/download/v0.7.2/linux-amd64-github-release.tar.bz2' | tar xvjf - --strip-components 3 -C ${GOPATH}/bin
+        - make build
+        - make docker
+        - make docker-publish
+        - promu crossbuild tarballs
+        - promu checksum .tarballs
+        - promu release .tarballs

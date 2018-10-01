@@ -1,5 +1,5 @@
 /bin
 *.DS_Store
-azure-metrics-exporter
+azure_metrics_exporter
 azure.yml
 notes.txt
