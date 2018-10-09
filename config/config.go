@@ -65,7 +65,15 @@ func (c *Config) Validate() (err error) {
 			}
 		}
 
-		if !strings.HasPrefix(t.Resource, "/") {
+		if len(t.Resource) == 0 && len(t.ResourceGroup) == 0 {
+			return fmt.Errorf("resource or resoure_group needs to be specified in each target")
+		}
+
+		if len(t.Resource) != 0 && len(t.ResourceGroup) != 0 {
+			return fmt.Errorf("Only one of resource and resoure_group can be specified in each target")
+		}
+
+		if len(t.Resource) != 0 && !strings.HasPrefix(t.Resource, "/") {
 			return fmt.Errorf("Resource path %q must start with a /", t.Resource)
 		}
 	}
@@ -84,9 +92,11 @@ type Credentials struct {
 
 // Target represents Azure target resource and its associated metric definitions
 type Target struct {
-	Resource     string   `yaml:"resource"`
-	Metrics      []Metric `yaml:"metrics"`
-	Aggregations []string `yaml:"aggregations"`
+	Resource      string   `yaml:"resource"`
+	ResourceGroup string   `yaml:"resource_group"`
+	ResourceTypes []string `yaml:"resource_types"`
+	Metrics       []Metric `yaml:"metrics"`
+	Aggregations  []string `yaml:"aggregations"`
 
 	XXX map[string]interface{} `yaml:",inline"`
 }

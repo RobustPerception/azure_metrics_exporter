@@ -62,6 +62,16 @@ type AzureMetricValueResponse struct {
 	} `json:"error"`
 }
 
+type AzureResourceListResponse struct {
+	Value []struct {
+		Id        string `json:"id"`
+		Name      string `json:"name"`
+		Type      string `json:"type"`
+		ManagedBy string `json:"managedBy"`
+		Location  string `json:"location"`
+	} `json:"value"`
+}
+
 // AzureClient represents our client to talk to the Azure api
 type AzureClient struct {
 	client               *http.Client
@@ -212,4 +222,66 @@ func (ac *AzureClient) getMetricValue(resource string, metricNames string, aggre
 	}
 
 	return data, nil
+}
+
+func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes []string) ([]string, error) {
+	apiVersion := "2018-02-01"
+	now := time.Now().UTC()
+	refreshAt := ac.accessTokenExpiresOn.Add(-10 * time.Minute)
+	if now.After(refreshAt) {
+		err := ac.getAccessToken()
+		if err != nil {
+			return nil, fmt.Errorf("Error refreshing access token: %v", err)
+		}
+	}
+
+	var filterTypesElements []string
+	for _, filterType := range resourceTypes {
+		filterTypesElements = append(filterTypesElements, fmt.Sprintf("resourcetype eq '%s'", filterType))
+	}
+	filterTypes := url.QueryEscape(strings.Join(filterTypesElements, " or "))
+
+	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
+
+	metricValueEndpoint := fmt.Sprintf("https://management.azure.com/%s/resourceGroups/%s/resources?api-version=%s&$filter=%s", subscription, resourceGroup, apiVersion, filterTypes)
+
+	req, err := http.NewRequest("GET", metricValueEndpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
+
+	log.Printf("GET %s", req.URL)
+
+	resp, err := ac.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Error: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("Unable to query resource group API with status code: %d", resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("Error reading body of response: %v", err)
+	}
+
+	var data AzureResourceListResponse
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
+	}
+
+	var resources []string
+
+	for _, result := range data.Value {
+		// subscription + leading '/'
+		subscriptionPrefixLen := len(subscription) + 1
+
+		// remove subscription from path to match manually specified ones
+		resources = append(resources, result.Id[subscriptionPrefixLen:])
+	}
+
+	return resources, nil
 }

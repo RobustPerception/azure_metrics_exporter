@@ -15,3 +15,8 @@ targets:
     metrics:
     - name: "Http2xx"
     - name: "Http5xx"
+  - resource_group: "webapps"
+    resource_types:
+    - "Microsoft.Compute/virtualMachines"
+    metrics:
+    - name: "CPU Credits Consumed"

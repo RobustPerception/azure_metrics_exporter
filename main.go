@@ -38,6 +38,65 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- prometheus.NewDesc("dummy", "dummy", nil, nil)
 }
 
+func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string, metricsStr string, aggregations []string) {
+	metricValueData, err := ac.getMetricValue(resource, metricsStr, aggregations)
+	if err != nil {
+		log.Printf("Failed to get metrics for target %s: %v", resource, err)
+		return
+	}
+
+	if len(metricValueData.Value) == 0 || len(metricValueData.Value[0].Timeseries) == 0 {
+		log.Printf("Metric %v not found at target %v\n", metricsStr, resource)
+		return
+	}
+	if len(metricValueData.Value[0].Timeseries[0].Data) == 0 {
+		log.Printf("No metric data returned for metric %v at target %v\n", metricsStr, resource)
+		return
+	}
+
+	for _, value := range metricValueData.Value {
+		// Ensure Azure metric names conform to Prometheus metric name conventions
+		metricName := strings.Replace(value.Name.Value, " ", "_", -1)
+		metricName = strings.ToLower(metricName + "_" + value.Unit)
+		metricName = strings.Replace(metricName, "/", "_per_", -1)
+		metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
+		metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
+		labels := CreateResourceLabels(value.ID)
+
+		if hasAggregation(aggregations, "Total") {
+			ch <- prometheus.MustNewConstMetric(
+				prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
+				prometheus.GaugeValue,
+				metricValue.Total,
+			)
+		}
+
+		if hasAggregation(aggregations, "Average") {
+			ch <- prometheus.MustNewConstMetric(
+				prometheus.NewDesc(metricName+"_average", metricName+"_average", nil, labels),
+				prometheus.GaugeValue,
+				metricValue.Average,
+			)
+		}
+
+		if hasAggregation(aggregations, "Minimum") {
+			ch <- prometheus.MustNewConstMetric(
+				prometheus.NewDesc(metricName+"_min", metricName+"_min", nil, labels),
+				prometheus.GaugeValue,
+				metricValue.Minimum,
+			)
+		}
+
+		if hasAggregation(aggregations, "Maximum") {
+			ch <- prometheus.MustNewConstMetric(
+				prometheus.NewDesc(metricName+"_max", metricName+"_max", nil, labels),
+				prometheus.GaugeValue,
+				metricValue.Maximum,
+			)
+		}
+	}
+}
+
 // Collect - collect results from Azure Montior API and create Prometheus metrics.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	// Get metric values for all defined metrics
@@ -47,61 +106,17 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			metrics = append(metrics, metric.Name)
 		}
 		metricsStr := strings.Join(metrics, ",")
-		metricValueData, err := ac.getMetricValue(target.Resource, metricsStr, target.Aggregations)
-		if err != nil {
-			log.Printf("Failed to get metrics for target %s: %v", target.Resource, err)
-			continue
-		}
 
-		if len(metricValueData.Value) == 0 || len(metricValueData.Value[0].Timeseries) == 0 {
-			log.Printf("Metric %v not found at target %v\n", metricsStr, target.Resource)
-			continue
-		}
-		if len(metricValueData.Value[0].Timeseries[0].Data) == 0 {
-			log.Printf("No metric data returned for metric %v at target %v\n", metricsStr, target.Resource)
-			continue
-		}
-
-		for _, value := range metricValueData.Value {
-			// Ensure Azure metric names conform to Prometheus metric name conventions
-			metricName := strings.Replace(value.Name.Value, " ", "_", -1)
-			metricName = strings.ToLower(metricName + "_" + value.Unit)
-			metricName = strings.Replace(metricName, "/", "_per_", -1)
-			metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
-			metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
-			labels := CreateResourceLabels(value.ID)
-
-			if hasAggregation(target.Aggregations, "Total") {
-				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
-					prometheus.GaugeValue,
-					metricValue.Total,
-				)
+		if len(target.Resource) != 0 {
+			c.collectResource(ch, target.Resource, metricsStr, target.Aggregations)
+		} else {
+			resources, err := ac.listFromResourceGroup(target.ResourceGroup, target.ResourceTypes)
+			if err != nil {
+				continue
 			}
 
-			if hasAggregation(target.Aggregations, "Average") {
-				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_average", metricName+"_average", nil, labels),
-					prometheus.GaugeValue,
-					metricValue.Average,
-				)
-			}
-
-			if hasAggregation(target.Aggregations, "Minimum") {
-
-				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_min", metricName+"_min", nil, labels),
-					prometheus.GaugeValue,
-					metricValue.Minimum,
-				)
-			}
-
-			if hasAggregation(target.Aggregations, "Maximum") {
-				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_max", metricName+"_max", nil, labels),
-					prometheus.GaugeValue,
-					metricValue.Maximum,
-				)
+			for _, resource := range resources {
+				c.collectResource(ch, resource, metricsStr, target.Aggregations)
 			}
 		}
 	}
