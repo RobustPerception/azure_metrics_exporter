@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/RobustPerception/azure_metrics_exporter/config"
 )
 
 // AzureMetricDefinitionResponse represents metric definition response for a given resource from Azure.
@@ -152,7 +150,7 @@ func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionR
 	return definitions, nil
 }
 
-func (ac *AzureClient) getMetricValue(metricNames string, target config.Target) (AzureMetricValueResponse, error) {
+func (ac *AzureClient) getMetricValue(resource string, metricNames string, aggregations []string) (AzureMetricValueResponse, error) {
 	apiVersion := "2018-01-01"
 	now := time.Now().UTC()
 	refreshAt := ac.accessTokenExpiresOn.Add(-10 * time.Minute)
@@ -163,7 +161,7 @@ func (ac *AzureClient) getMetricValue(metricNames string, target config.Target) 
 		}
 	}
 
-	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, target.Resource)
+	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, resource)
 	endTime, startTime := GetTimes()
 
 	metricValueEndpoint := fmt.Sprintf("https://management.azure.com/%s/providers/microsoft.insights/metrics", metricsResource)
@@ -178,8 +176,8 @@ func (ac *AzureClient) getMetricValue(metricNames string, target config.Target) 
 	if metricNames != "" {
 		values.Add("metricnames", metricNames)
 	}
-	if len(target.Aggregations) > 0 {
-		values.Add("aggregation", strings.Join(target.Aggregations, ","))
+	if len(aggregations) > 0 {
+		values.Add("aggregation", strings.Join(aggregations, ","))
 	} else {
 		values.Add("aggregation", "Total,Average,Minimum,Maximum")
 	}
