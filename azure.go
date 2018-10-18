@@ -209,5 +209,9 @@ func (ac *AzureClient) getMetricValue(metricNames string, target config.Target) 
 		return AzureMetricValueResponse{}, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
 
+	if data.APIError.Code != "" {
+		return AzureMetricValueResponse{}, fmt.Errorf("Metrics API returned error: %s - %v", data.APIError.Code, data.APIError.Message)
+	}
+
 	return data, nil
 }

@@ -53,7 +53,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			continue
 		}
 
-		if metricValueData.Value == nil {
+		if len(metricValueData.Value) == 0 || len(metricValueData.Value[0].Timeseries) == 0 {
 			log.Printf("Metric %v not found at target %v\n", metricsStr, target.Resource)
 			continue
 		}
