@@ -22,6 +22,8 @@ This will print your resource id's application/service name along with a list of
 
 `azure_resource_id` and `subscription_id` can be found under properties in the Azure portal for your application/service.
 
+`azure_resource_id`  should start with `/resourceGroups...` (`/subscriptions/xxxxxxxx-xxxx-xxxx-xxx-xxxxxxxxx` must be removed from the begining of `azure_resource_id` property value)
+
 `tenant_id` is found under `Azure Active Directory > Properties` and is listed as `Directory ID`.
 
 The `client_id` and `client_secret` are obtained by registering an application under 'Azure Active Directory'.
