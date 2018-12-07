@@ -20,9 +20,9 @@ resource_groups:
   - resource_group: "webapps"
     resource_types:
     - "Microsoft.Compute/virtualMachines"
-    resource_include:
+    resource_name_include_re:
     - "^testvm"
-    resource_exclude:
+    resource_name_exclude_re:
     - "^testvm12$"
     metrics:
     - name: "CPU Credits Consumed"

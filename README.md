@@ -55,9 +55,9 @@ resource_groups:
   - resource_group: "webapps"
     resource_types:
     - "Microsoft.Compute/virtualMachines"
-    resource_include:
+    resource_name_include_re:
     - "^testvm"
-    resource_exclude:
+    resource_name_exclude_re:
     - "^testvm12$"
     metrics:
     - name: "CPU Credits Consumed"
@@ -85,11 +85,11 @@ Resources in a resource group can be filtered using the the following keys:
 `resource_types`:
 List of resource types to include (corresponds to the `Resource type` column in the Azure portal).
 
-`resource_include`:
+`resource_name_include_re`:
 List of regexps that is matched against the resource name.
 Metrics of all matched resources are exported (defaults to include all)
 
-`resource_exclude`:
+`resource_name_exclude_re`:
 List of regexps that is matched against the resource name.
 Metrics of all matched resources are ignored (defaults to exclude none)
 Excludes take precedence over the include filter.

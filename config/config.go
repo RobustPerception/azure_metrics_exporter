@@ -88,7 +88,7 @@ func (c *Config) Validate() (err error) {
 			return fmt.Errorf("At least one metric needs to be specified in each resource group")
 		}
 
-		for _, rx := range append(t.ResourceInclude, t.ResourceExclude...) {
+		for _, rx := range append(t.ResourceNameIncludeRe, t.ResourceNameExcludeRe...) {
 			if _, err := regexp.Compile(rx); err != nil {
 				return fmt.Errorf("Error in regexp '%s': %s", rx, err)
 			}
@@ -136,12 +136,12 @@ type Target struct {
 
 // ResourceGroup represents Azure target resource group and its associated metric definitions
 type ResourceGroup struct {
-	ResourceGroup   string   `yaml:"resource_group"`
-	ResourceTypes   []string `yaml:"resource_types"`
-	ResourceInclude []string `yaml:"resource_include"`
-	ResourceExclude []string `yaml:"resource_exclude"`
-	Metrics         []Metric `yaml:"metrics"`
-	Aggregations    []string `yaml:"aggregations"`
+	ResourceGroup         string   `yaml:"resource_group"`
+	ResourceTypes         []string `yaml:"resource_types"`
+	ResourceNameIncludeRe []string `yaml:"resource_name_include_re"`
+	ResourceNameExcludeRe []string `yaml:"resource_name_exclude_re"`
+	Metrics               []Metric `yaml:"metrics"`
+	Aggregations          []string `yaml:"aggregations"`
 
 	XXX map[string]interface{} `yaml:",inline"`
 }
