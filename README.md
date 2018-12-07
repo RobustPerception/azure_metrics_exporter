@@ -77,3 +77,19 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9276']
 ```
+
+# Resource group filtering
+
+Resources in a resource group can be filtered using the the following keys:
+
+`resource_types`:
+List of resource types to include (corresponds to the `Resource type` column in the Azure portal).
+
+`resource_include`:
+List of regexps that is matched against the resource name.
+Metrics of all matched resources are exported (defaults to include all)
+
+`resource_exclude`:
+List of regexps that is matched against the resource name.
+Metrics of all matched resources are ignored (defaults to exclude none)
+Excludes take precedence over the include filter.
