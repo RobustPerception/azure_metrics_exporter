@@ -107,17 +107,23 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		}
 		metricsStr := strings.Join(metrics, ",")
 
-		if len(target.Resource) != 0 {
-			c.collectResource(ch, target.Resource, metricsStr, target.Aggregations)
-		} else {
-			resources, err := ac.listFromResourceGroup(target.ResourceGroup, target.ResourceTypes)
-			if err != nil {
-				continue
-			}
+		c.collectResource(ch, target.Resource, metricsStr, target.Aggregations)
+	}
 
-			for _, resource := range resources {
-				c.collectResource(ch, resource, metricsStr, target.Aggregations)
-			}
+	for _, target := range sc.C.ResourceGroups {
+		metrics := []string{}
+		for _, metric := range target.Metrics {
+			metrics = append(metrics, metric.Name)
+		}
+		metricsStr := strings.Join(metrics, ",")
+
+		resources, err := ac.listFromResourceGroup(target.ResourceGroup, target.ResourceTypes)
+		if err != nil {
+			continue
+		}
+
+		for _, resource := range resources {
+			c.collectResource(ch, resource, metricsStr, target.Aggregations)
 		}
 	}
 }
