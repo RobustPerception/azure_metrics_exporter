@@ -162,14 +162,6 @@ func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionR
 
 func (ac *AzureClient) getMetricValue(resource string, metricNames string, aggregations []string) (AzureMetricValueResponse, error) {
 	apiVersion := "2018-01-01"
-	now := time.Now().UTC()
-	refreshAt := ac.accessTokenExpiresOn.Add(-10 * time.Minute)
-	if now.After(refreshAt) {
-		err := ac.getAccessToken()
-		if err != nil {
-			return AzureMetricValueResponse{}, fmt.Errorf("Error refreshing access token: %v", err)
-		}
-	}
 
 	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, resource)
 	endTime, startTime := GetTimes()
@@ -226,14 +218,6 @@ func (ac *AzureClient) getMetricValue(resource string, metricNames string, aggre
 
 func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes []string) ([]string, error) {
 	apiVersion := "2018-02-01"
-	now := time.Now().UTC()
-	refreshAt := ac.accessTokenExpiresOn.Add(-10 * time.Minute)
-	if now.After(refreshAt) {
-		err := ac.getAccessToken()
-		if err != nil {
-			return nil, fmt.Errorf("Error refreshing access token: %v", err)
-		}
-	}
 
 	var filterTypesElements []string
 	for _, filterType := range resourceTypes {
@@ -284,4 +268,17 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 	}
 
 	return resources, nil
+}
+
+func (ac *AzureClient) refreshAccessToken() error {
+	now := time.Now().UTC()
+	refreshAt := ac.accessTokenExpiresOn.Add(-10 * time.Minute)
+	if now.After(refreshAt) {
+		err := ac.getAccessToken()
+		if err != nil {
+			return fmt.Errorf("Error refreshing access token: %v", err)
+		}
+	}
+
+	return nil
 }

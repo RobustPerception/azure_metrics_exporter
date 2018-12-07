@@ -99,6 +99,11 @@ func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string
 
 // Collect - collect results from Azure Montior API and create Prometheus metrics.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
+	if err := ac.refreshAccessToken(); err != nil {
+		log.Println(err)
+		return
+	}
+
 	// Get metric values for all defined metrics
 	for _, target := range sc.C.Targets {
 		metrics := []string{}
