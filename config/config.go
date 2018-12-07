@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -86,6 +87,12 @@ func (c *Config) Validate() (err error) {
 		if len(t.Metrics) == 0 {
 			return fmt.Errorf("At least one metric needs to be specified in each resource group")
 		}
+
+		for _, rx := range append(t.ResourceInclude, t.ResourceExclude...) {
+			if _, err := regexp.Compile(rx); err != nil {
+				return fmt.Errorf("Error in regexp '%s': %s", rx, err)
+			}
+		}
 	}
 
 	return nil
@@ -129,10 +136,12 @@ type Target struct {
 
 // ResourceGroup represents Azure target resource group and its associated metric definitions
 type ResourceGroup struct {
-	ResourceGroup string   `yaml:"resource_group"`
-	ResourceTypes []string `yaml:"resource_types"`
-	Metrics       []Metric `yaml:"metrics"`
-	Aggregations  []string `yaml:"aggregations"`
+	ResourceGroup   string   `yaml:"resource_group"`
+	ResourceTypes   []string `yaml:"resource_types"`
+	ResourceInclude []string `yaml:"resource_include"`
+	ResourceExclude []string `yaml:"resource_exclude"`
+	Metrics         []Metric `yaml:"metrics"`
+	Aggregations    []string `yaml:"aggregations"`
 
 	XXX map[string]interface{} `yaml:",inline"`
 }

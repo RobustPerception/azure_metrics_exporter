@@ -123,6 +123,37 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		}
 
 		for _, resource := range resources {
+			resource_parts := strings.Split(resource, "/")
+			resource_name := resource_parts[len(resource_parts)-1]
+
+			if len(target.ResourceInclude) != 0 {
+				include := false
+				for _, rx := range target.ResourceInclude {
+					matched, err := regexp.MatchString(rx, resource_name)
+					if err == nil && matched {
+						include = true
+						break
+					}
+				}
+
+				if !include {
+					continue
+				}
+			}
+
+			exclude := false
+			for _, rx := range target.ResourceExclude {
+				matched, err := regexp.MatchString(rx, resource_name)
+				if err == nil && matched {
+					exclude = true
+					break
+				}
+			}
+
+			if exclude {
+				continue
+			}
+
 			c.collectResource(ch, resource, metricsStr, target.Aggregations)
 		}
 	}
