@@ -50,6 +50,18 @@ targets:
     metrics:
     - name: "Http2xx"
     - name: "Http5xx"
+
+resource_groups:
+  - resource_group: "webapps"
+    resource_types:
+    - "Microsoft.Compute/virtualMachines"
+    resource_include:
+    - "^testvm"
+    resource_exclude:
+    - "^testvm12$"
+    metrics:
+    - name: "CPU Credits Consumed"
+
 ```
 
 By default, all aggregations are returned (`Total`, `Maximum`, `Average`, `Minimum`). It can be overridden per resource.
