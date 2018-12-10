@@ -56,9 +56,9 @@ resource_groups:
     resource_types:
     - "Microsoft.Compute/virtualMachines"
     resource_name_include_re:
-    - "^testvm"
+    - "testvm.*"
     resource_name_exclude_re:
-    - "^testvm12$"
+    - "testvm12"
     metrics:
     - name: "CPU Credits Consumed"
 
