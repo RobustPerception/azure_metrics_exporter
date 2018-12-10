@@ -101,6 +101,7 @@ func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	if err := ac.refreshAccessToken(); err != nil {
 		log.Println(err)
+		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("azure_error", "Error collecting metrics", nil, nil), err)
 		return
 	}
 
