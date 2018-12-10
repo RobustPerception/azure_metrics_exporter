@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -188,7 +187,6 @@ func (ac *AzureClient) getMetricValue(resource string, metricNames string, aggre
 
 	req.URL.RawQuery = values.Encode()
 
-	log.Printf("GET %s", req.URL)
 	resp, err := ac.client.Do(req)
 	if err != nil {
 		return AzureMetricValueResponse{}, fmt.Errorf("Error: %v", err)
@@ -234,8 +232,6 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
-
-	log.Printf("GET %s", req.URL)
 
 	resp, err := ac.client.Do(req)
 	if err != nil {
