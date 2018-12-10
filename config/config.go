@@ -87,12 +87,6 @@ func (c *Config) Validate() (err error) {
 		if len(t.Metrics) == 0 {
 			return fmt.Errorf("At least one metric needs to be specified in each resource group")
 		}
-
-		for _, rx := range append(t.ResourceNameIncludeRe, t.ResourceNameExcludeRe...) {
-			if _, err := regexp.Compile(rx); err != nil {
-				return fmt.Errorf("Error in regexp '%s': %s", rx, err)
-			}
-		}
 	}
 
 	return nil
@@ -138,8 +132,8 @@ type Target struct {
 type ResourceGroup struct {
 	ResourceGroup         string   `yaml:"resource_group"`
 	ResourceTypes         []string `yaml:"resource_types"`
-	ResourceNameIncludeRe []string `yaml:"resource_name_include_re"`
-	ResourceNameExcludeRe []string `yaml:"resource_name_exclude_re"`
+	ResourceNameIncludeRe []Regexp `yaml:"resource_name_include_re"`
+	ResourceNameExcludeRe []Regexp `yaml:"resource_name_exclude_re"`
 	Metrics               []Metric `yaml:"metrics"`
 	Aggregations          []string `yaml:"aggregations"`
 
@@ -151,6 +145,11 @@ type Metric struct {
 	Name string `yaml:"name"`
 
 	XXX map[string]interface{} `yaml:",inline"`
+}
+
+// Regexp encapsulates a regexp.Regexp and makes it YAML marshalable.
+type Regexp struct {
+	*regexp.Regexp
 }
 
 func checkOverflow(m map[string]interface{}, ctx string) error {
@@ -221,5 +220,19 @@ func (s *ResourceGroup) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err := checkOverflow(s.XXX, "config"); err != nil {
 		return err
 	}
+	return nil
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (re *Regexp) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	if err := unmarshal(&s); err != nil {
+		return err
+	}
+	regex, err := regexp.Compile(s)
+	if err != nil {
+		return err
+	}
+	re.Regexp = regex
 	return nil
 }

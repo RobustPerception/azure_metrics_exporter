@@ -135,8 +135,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			if len(target.ResourceNameIncludeRe) != 0 {
 				include := false
 				for _, rx := range target.ResourceNameIncludeRe {
-					matched, err := regexp.MatchString(rx, resource_name)
-					if err == nil && matched {
+					if rx.MatchString(resource_name) {
 						include = true
 						break
 					}
@@ -149,8 +148,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 
 			exclude := false
 			for _, rx := range target.ResourceNameExcludeRe {
-				matched, err := regexp.MatchString(rx, resource_name)
-				if err == nil && matched {
+				if rx.MatchString(resource_name) {
 					exclude = true
 					break
 				}
