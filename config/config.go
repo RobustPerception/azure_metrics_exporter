@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -11,8 +12,9 @@ import (
 
 // Config - Azure exporter configuration
 type Config struct {
-	Credentials Credentials `yaml:"credentials"`
-	Targets     []Target    `yaml:"targets"`
+	Credentials    Credentials     `yaml:"credentials"`
+	Targets        []Target        `yaml:"targets"`
+	ResourceGroups []ResourceGroup `yaml:"resource_groups"`
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline"`
@@ -52,23 +54,58 @@ var validAggregations = []string{"Total", "Average", "Minimum", "Maximum"}
 
 func (c *Config) Validate() (err error) {
 	for _, t := range c.Targets {
-		for _, a := range t.Aggregations {
-			ok := false
-			for _, valid := range validAggregations {
-				if a == valid {
-					ok = true
-					break
-				}
-			}
-			if !ok {
-				return fmt.Errorf("%s is not one of the valid aggregations (%v)", a, validAggregations)
-			}
+		if err := c.validateAggregations(t.Aggregations); err != nil {
+			return err
+		}
+
+		if len(t.Resource) == 0 {
+			return fmt.Errorf("name needs to be specified in each resource")
 		}
 
 		if !strings.HasPrefix(t.Resource, "/") {
 			return fmt.Errorf("Resource path %q must start with a /", t.Resource)
 		}
+
+		if len(t.Metrics) == 0 {
+			return fmt.Errorf("At least one metric needs to be specified in each resource")
+		}
 	}
+
+	for _, t := range c.ResourceGroups {
+		if err := c.validateAggregations(t.Aggregations); err != nil {
+			return err
+		}
+
+		if len(t.ResourceGroup) == 0 {
+			return fmt.Errorf("resource_group needs to be specified in each resource group")
+		}
+
+		if len(t.ResourceTypes) == 0 {
+			return fmt.Errorf("At lease one resource type needs to be specified in each resource group")
+		}
+
+		if len(t.Metrics) == 0 {
+			return fmt.Errorf("At least one metric needs to be specified in each resource group")
+		}
+	}
+
+	return nil
+}
+
+func (c *Config) validateAggregations(aggregations []string) error {
+	for _, a := range aggregations {
+		ok := false
+		for _, valid := range validAggregations {
+			if a == valid {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			return fmt.Errorf("%s is not one of the valid aggregations (%v)", a, validAggregations)
+		}
+	}
+
 	return nil
 }
 
@@ -91,11 +128,28 @@ type Target struct {
 	XXX map[string]interface{} `yaml:",inline"`
 }
 
+// ResourceGroup represents Azure target resource group and its associated metric definitions
+type ResourceGroup struct {
+	ResourceGroup         string   `yaml:"resource_group"`
+	ResourceTypes         []string `yaml:"resource_types"`
+	ResourceNameIncludeRe []Regexp `yaml:"resource_name_include_re"`
+	ResourceNameExcludeRe []Regexp `yaml:"resource_name_exclude_re"`
+	Metrics               []Metric `yaml:"metrics"`
+	Aggregations          []string `yaml:"aggregations"`
+
+	XXX map[string]interface{} `yaml:",inline"`
+}
+
 // Metric defines metric name
 type Metric struct {
 	Name string `yaml:"name"`
 
 	XXX map[string]interface{} `yaml:",inline"`
+}
+
+// Regexp encapsulates a regexp.Regexp and makes it YAML marshalable.
+type Regexp struct {
+	*regexp.Regexp
 }
 
 func checkOverflow(m map[string]interface{}, ctx string) error {
@@ -142,5 +196,43 @@ func (s *Metric) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err := checkOverflow(s.XXX, "config"); err != nil {
 		return err
 	}
+	return nil
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (s *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type plain Target
+	if err := unmarshal((*plain)(s)); err != nil {
+		return err
+	}
+	if err := checkOverflow(s.XXX, "config"); err != nil {
+		return err
+	}
+	return nil
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (s *ResourceGroup) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type plain ResourceGroup
+	if err := unmarshal((*plain)(s)); err != nil {
+		return err
+	}
+	if err := checkOverflow(s.XXX, "config"); err != nil {
+		return err
+	}
+	return nil
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (re *Regexp) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	if err := unmarshal(&s); err != nil {
+		return err
+	}
+	regex, err := regexp.Compile("^(?:" + s + ")$")
+	if err != nil {
+		return err
+	}
+	re.Regexp = regex
 	return nil
 }

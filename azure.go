@@ -4,14 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/RobustPerception/azure_metrics_exporter/config"
 )
 
 // AzureMetricDefinitionResponse represents metric definition response for a given resource from Azure.
@@ -62,6 +59,16 @@ type AzureMetricValueResponse struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	} `json:"error"`
+}
+
+type AzureResourceListResponse struct {
+	Value []struct {
+		Id        string `json:"id"`
+		Name      string `json:"name"`
+		Type      string `json:"type"`
+		ManagedBy string `json:"managedBy"`
+		Location  string `json:"location"`
+	} `json:"value"`
 }
 
 // AzureClient represents our client to talk to the Azure api
@@ -152,18 +159,10 @@ func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionR
 	return definitions, nil
 }
 
-func (ac *AzureClient) getMetricValue(metricNames string, target config.Target) (AzureMetricValueResponse, error) {
+func (ac *AzureClient) getMetricValue(resource string, metricNames string, aggregations []string) (AzureMetricValueResponse, error) {
 	apiVersion := "2018-01-01"
-	now := time.Now().UTC()
-	refreshAt := ac.accessTokenExpiresOn.Add(-10 * time.Minute)
-	if now.After(refreshAt) {
-		err := ac.getAccessToken()
-		if err != nil {
-			return AzureMetricValueResponse{}, fmt.Errorf("Error refreshing access token: %v", err)
-		}
-	}
 
-	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, target.Resource)
+	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, resource)
 	endTime, startTime := GetTimes()
 
 	metricValueEndpoint := fmt.Sprintf("https://management.azure.com/%s/providers/microsoft.insights/metrics", metricsResource)
@@ -178,8 +177,8 @@ func (ac *AzureClient) getMetricValue(metricNames string, target config.Target) 
 	if metricNames != "" {
 		values.Add("metricnames", metricNames)
 	}
-	if len(target.Aggregations) > 0 {
-		values.Add("aggregation", strings.Join(target.Aggregations, ","))
+	if len(aggregations) > 0 {
+		values.Add("aggregation", strings.Join(aggregations, ","))
 	} else {
 		values.Add("aggregation", "Total,Average,Minimum,Maximum")
 	}
@@ -188,7 +187,6 @@ func (ac *AzureClient) getMetricValue(metricNames string, target config.Target) 
 
 	req.URL.RawQuery = values.Encode()
 
-	log.Printf("GET %s", req.URL)
 	resp, err := ac.client.Do(req)
 	if err != nil {
 		return AzureMetricValueResponse{}, fmt.Errorf("Error: %v", err)
@@ -214,4 +212,69 @@ func (ac *AzureClient) getMetricValue(metricNames string, target config.Target) 
 	}
 
 	return data, nil
+}
+
+func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes []string) ([]string, error) {
+	apiVersion := "2018-02-01"
+
+	var filterTypesElements []string
+	for _, filterType := range resourceTypes {
+		filterTypesElements = append(filterTypesElements, fmt.Sprintf("resourcetype eq '%s'", filterType))
+	}
+	filterTypes := url.QueryEscape(strings.Join(filterTypesElements, " or "))
+
+	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
+
+	metricValueEndpoint := fmt.Sprintf("https://management.azure.com/%s/resourceGroups/%s/resources?api-version=%s&$filter=%s", subscription, resourceGroup, apiVersion, filterTypes)
+
+	req, err := http.NewRequest("GET", metricValueEndpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
+
+	resp, err := ac.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Error: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("Unable to query resource group API with status code: %d", resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("Error reading body of response: %v", err)
+	}
+
+	var data AzureResourceListResponse
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
+	}
+
+	var resources []string
+
+	for _, result := range data.Value {
+		// subscription + leading '/'
+		subscriptionPrefixLen := len(subscription) + 1
+
+		// remove subscription from path to match manually specified ones
+		resources = append(resources, result.Id[subscriptionPrefixLen:])
+	}
+
+	return resources, nil
+}
+
+func (ac *AzureClient) refreshAccessToken() error {
+	now := time.Now().UTC()
+	refreshAt := ac.accessTokenExpiresOn.Add(-10 * time.Minute)
+	if now.After(refreshAt) {
+		err := ac.getAccessToken()
+		if err != nil {
+			return fmt.Errorf("Error refreshing access token: %v", err)
+		}
+	}
+
+	return nil
 }
