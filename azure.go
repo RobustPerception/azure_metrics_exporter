@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -77,6 +78,7 @@ type AzureClient struct {
 	accessToken          string
 	accessTokenExpiresOn time.Time
 
+	sync.RWMutex
 	LastSeenRateLimit int
 }
 
@@ -216,7 +218,9 @@ func (ac *AzureClient) getMetricValue(resource string, metricNames string, aggre
 	if rateLimitStr := resp.Header.Get("x-ms-ratelimit-remaining-subscription-reads"); rateLimitStr != "" {
 		rateLimit, err := strconv.Atoi(rateLimitStr)
 		if err == nil {
+			ac.Lock()
 			ac.LastSeenRateLimit = rateLimit
+			ac.Unlock()
 		}
 	}
 
