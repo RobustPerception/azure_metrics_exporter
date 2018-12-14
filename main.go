@@ -161,6 +161,12 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			c.collectResource(ch, resource, metricsStr, target.Aggregations)
 		}
 	}
+
+	ch <- prometheus.MustNewConstMetric(
+		prometheus.NewDesc("azure_read_rate_limit_remaining", "Remaining API read calls in limit", nil, nil),
+		prometheus.GaugeValue,
+		float64(ac.LastSeenRateLimit),
+	)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
