@@ -10,4 +10,6 @@ pipeline:
     commands:
       - docker login $DOCKER_SERVER -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
       - docker push dodoreg.azurecr.io/azure-metric-exporter:${DRONE_BRANCH}-${DRONE_COMMIT_SHA:0:7}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     secrets: [docker_username, docker_password, docker_server]
