@@ -2,14 +2,14 @@ pipeline:
   build-azure-metric-expoter:
     image: docker
     commands:
-      - docker build -t dodoreg.azurecr.io/azure-metric-exporter:${DRONE_BRANCH}-${DRONE_COMMIT_SHA:0:7} .
+      - docker build -t dodoreg.azurecr.io/azure-metric-exporter .
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
   push-azure-metric-expoter:
     image: docker
     commands:
       - docker login $DOCKER_SERVER -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-      - docker push dodoreg.azurecr.io/azure-metric-exporter:${DRONE_BRANCH}-${DRONE_COMMIT_SHA:0:7}
+      - docker push dodoreg.azurecr.io/azure-metric-exporter
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     secrets: [docker_username, docker_password, docker_server]
