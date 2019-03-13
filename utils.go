@@ -33,6 +33,9 @@ func CreateResourceLabels(resourceID string) map[string]string {
 	labels := make(map[string]string)
 	labels["resource_group"] = strings.Split(resourceID, "/")[4]
 	labels["resource_name"] = strings.Split(resourceID, "/")[8]
+        if len(strings.Split(resourceID, "/")) > 13 {
+	    labels["sub_resource_name"] = strings.Split(resourceID, "/")[10]
+        }
 	return labels
 }
 
