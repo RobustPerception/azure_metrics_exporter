@@ -12,6 +12,18 @@ Allows for the exporting of metrics from Azure applications using the [Azure mon
 go get -u github.com/RobustPerception/azure_metrics_exporter
 ```
 
+## Usage
+```bash
+azure_metrics_exporter [<flags>]
+
+Flags:
+  -h, --help                     Show context-sensitive help (also try --help-long and --help-man).
+      --config.file="azure.yml"  Azure exporter configuration file.
+      --web.listen-address=":9276"  
+                                 The address to listen on for HTTP requests.
+      --list.definitions         List available metric definitions for the given resources and exit.
+```
+
 ## Rate limits
 
 Note that Azure imposes an [API read limit of 15,000 requests per hour](https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-manager-request-limits) so the number of metrics you're querying for should be proportional to your scrape interval.
