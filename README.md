@@ -6,11 +6,11 @@ Azure metrics exporter for [Prometheus.](https://prometheus.io)
 
 Allows for the exporting of metrics from Azure applications using the [Azure monitor API.](https://docs.microsoft.com/en-us/azure/monitoring-and-diagnostics/monitoring-rest-api-walkthrough)
 
-# Rate limits
+## Rate limits
 
 Note that Azure imposes an [API read limit of 15,000 requests per hour](https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-manager-request-limits) so the number of metrics you're querying for should be proportional to your scrape interval.
 
-# Retrieving Metric definitions
+## Retrieving Metric definitions
 
 In order to get all the metric definitions for the resources specified in your configuration file, run the following:
 
@@ -18,7 +18,7 @@ In order to get all the metric definitions for the resources specified in your c
 
 This will print your resource id's application/service name along with a list of each of the available metric definitions that you can query for for that resource.
 
-# Example azure-metrics-exporter config
+## Example azure-metrics-exporter config
 
 `azure_resource_id` and `subscription_id` can be found under properties in the Azure portal for your application/service.
 
@@ -68,7 +68,7 @@ resource_groups:
 
 By default, all aggregations are returned (`Total`, `Maximum`, `Average`, `Minimum`). It can be overridden per resource.
 
-# Example Prometheus config
+## Example Prometheus config
 
 ```
 global:
@@ -80,7 +80,7 @@ scrape_configs:
       - targets: ['localhost:9276']
 ```
 
-# Resource group filtering
+## Resource group filtering
 
 Resources in a resource group can be filtered using the the following keys:
 
