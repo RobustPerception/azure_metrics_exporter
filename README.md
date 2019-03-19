@@ -6,6 +6,12 @@ Azure metrics exporter for [Prometheus.](https://prometheus.io)
 
 Allows for the exporting of metrics from Azure applications using the [Azure monitor API.](https://docs.microsoft.com/en-us/azure/monitoring-and-diagnostics/monitoring-rest-api-walkthrough)
 
+## Install
+
+```bash
+go get -u github.com/RobustPerception/azure_metrics_exporter
+```
+
 ## Rate limits
 
 Note that Azure imposes an [API read limit of 15,000 requests per hour](https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-manager-request-limits) so the number of metrics you're querying for should be proportional to your scrape interval.
