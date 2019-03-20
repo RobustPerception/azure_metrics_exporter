@@ -1,7 +1,5 @@
 # Azure-metrics-exporter
 
-**Work in progress**
-
 Azure metrics exporter for [Prometheus.](https://prometheus.io)
 
 Allows for the exporting of metrics from Azure applications using the [Azure monitor API.](https://docs.microsoft.com/en-us/azure/monitoring-and-diagnostics/monitoring-rest-api-walkthrough)
