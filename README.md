@@ -12,14 +12,7 @@ go get -u github.com/RobustPerception/azure_metrics_exporter
 
 ## Usage
 ```bash
-azure_metrics_exporter [<flags>]
-
-Flags:
-  -h, --help                     Show context-sensitive help (also try --help-long and --help-man).
-      --config.file="azure.yml"  Azure exporter configuration file.
-      --web.listen-address=":9276"  
-                                 The address to listen on for HTTP requests.
-      --list.definitions         List available metric definitions for the given resources and exit.
+./azure_metrics_exporter --help
 ```
 
 ## Rate limits
@@ -30,7 +23,9 @@ Note that Azure imposes an [API read limit of 15,000 requests per hour](https://
 
 In order to get all the metric definitions for the resources specified in your configuration file, run the following:
 
-`./azure-metrics-exporter --list.definitions`
+```bash
+./azure-metrics-exporter --list.definitions
+```
 
 This will print your resource id's application/service name along with a list of each of the available metric definitions that you can query for for that resource.
 
