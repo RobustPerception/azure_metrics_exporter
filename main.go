@@ -24,6 +24,7 @@ var (
 	listenAddress         = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9276").String()
 	listMetricDefinitions = kingpin.Flag("list.definitions", "List available metric definitions for the given resources and exit.").Bool()
 	invalidMetricChars    = regexp.MustCompile("[^a-zA-Z0-9_:]")
+	azureErrorDesc        = prometheus.NewDesc("azure_error", "Error collecting metrics", nil, nil)
 )
 
 func init() {
@@ -101,7 +102,7 @@ func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	if err := ac.refreshAccessToken(); err != nil {
 		log.Println(err)
-		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("azure_error", "Error collecting metrics", nil, nil), err)
+		ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
 		return
 	}
 
@@ -127,7 +128,8 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		if err != nil {
 			log.Printf("Failed to get resources for resource group %s and resource types %s: %v",
 				target.ResourceGroup, target.ResourceTypes, err)
-			continue
+			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
+			return
 		}
 
 		for _, resource := range resources {
