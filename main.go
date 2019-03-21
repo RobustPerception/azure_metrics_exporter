@@ -125,6 +125,8 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 
 		resources, err := ac.listFromResourceGroup(target.ResourceGroup, target.ResourceTypes)
 		if err != nil {
+			log.Printf("Failed to get resources for resource group %s and resource types %s: %v",
+				target.ResourceGroup, target.ResourceTypes, err)
 			continue
 		}
 
