@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/RobustPerception/azure_metrics_exporter/config"
 )
 
 // AzureMetricDefinitionResponse represents metric definition response for a given resource from Azure.
@@ -214,6 +216,15 @@ func (ac *AzureClient) getMetricValue(resource string, metricNames string, aggre
 	return data, nil
 }
 
+func (ac *AzureClient) filteredListFromResourceGroup(resourceGroup config.ResourceGroup) ([]string, error) {
+	resources, err := ac.listFromResourceGroup(resourceGroup.ResourceGroup, resourceGroup.ResourceTypes)
+	if err != nil {
+		return nil, err
+	}
+	filteredResources := ac.filterResources(resources, resourceGroup)
+	return filteredResources, nil
+}
+
 func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes []string) ([]string, error) {
 	apiVersion := "2018-02-01"
 
@@ -264,6 +275,45 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 	}
 
 	return resources, nil
+}
+
+func (ac *AzureClient) filterResources(resources []string, resourceGroup config.ResourceGroup) []string {
+	filteredResources := []string{}
+
+	for _, resource := range resources {
+		resourceParts := strings.Split(resource, "/")
+		resourceName := resourceParts[len(resourceParts)-1]
+
+		if len(resourceGroup.ResourceNameIncludeRe) != 0 {
+			include := false
+			for _, rx := range resourceGroup.ResourceNameIncludeRe {
+				if rx.MatchString(resourceName) {
+					include = true
+					break
+				}
+			}
+
+			if !include {
+				continue
+			}
+		}
+
+		exclude := false
+		for _, rx := range resourceGroup.ResourceNameExcludeRe {
+			if rx.MatchString(resourceName) {
+				exclude = true
+				break
+			}
+		}
+
+		if exclude {
+			continue
+		}
+
+		filteredResources = append(filteredResources, resource)
+	}
+
+	return filteredResources
 }
 
 func (ac *AzureClient) refreshAccessToken() error {
