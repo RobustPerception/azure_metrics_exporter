@@ -245,6 +245,7 @@ func (ac *AzureClient) getMetricValue(resource string, metricNames string, aggre
 	return data, nil
 }
 
+// Return resource list resolved and filtered from resource_groups configuration
 func (ac *AzureClient) filteredListFromResourceGroup(resourceGroup config.ResourceGroup) ([]string, error) {
 	resources, err := ac.listFromResourceGroup(resourceGroup.ResourceGroup, resourceGroup.ResourceTypes)
 	if err != nil {
@@ -254,6 +255,7 @@ func (ac *AzureClient) filteredListFromResourceGroup(resourceGroup config.Resour
 	return filteredResources, nil
 }
 
+// Return all resources for given resource group and types
 func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes []string) ([]string, error) {
 	apiVersion := "2018-02-01"
 
@@ -306,6 +308,7 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 	return resources, nil
 }
 
+// Return a filtered resource list based on a given resource list and regular expressions from the configuration
 func (ac *AzureClient) filterResources(resources []string, resourceGroup config.ResourceGroup) []string {
 	filteredResources := []string{}
 
