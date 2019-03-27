@@ -125,7 +125,7 @@ func (ac *AzureClient) getAccessToken() error {
 	return nil
 }
 
-// Return metric definitions for all configured target and resource groups
+// Returns metric definitions for all configured target and resource groups
 func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionResponse, error) {
 
 	definitions := make(map[string]AzureMetricDefinitionResponse)
@@ -156,7 +156,7 @@ func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionR
 	return definitions, nil
 }
 
-// Return AzureMetricDefinitionResponse for a given resource
+// Returns AzureMetricDefinitionResponse for a given resource
 func (ac *AzureClient) getAzureMetricDefinitionResponse(resource string) (AzureMetricDefinitionResponse, error) {
 	apiVersion := "2018-01-01"
 
@@ -245,7 +245,7 @@ func (ac *AzureClient) getMetricValue(resource string, metricNames string, aggre
 	return data, nil
 }
 
-// Return resource list resolved and filtered from resource_groups configuration
+// Returns resource list resolved and filtered from resource_groups configuration
 func (ac *AzureClient) filteredListFromResourceGroup(resourceGroup config.ResourceGroup) ([]string, error) {
 	resources, err := ac.listFromResourceGroup(resourceGroup.ResourceGroup, resourceGroup.ResourceTypes)
 	if err != nil {
@@ -255,7 +255,7 @@ func (ac *AzureClient) filteredListFromResourceGroup(resourceGroup config.Resour
 	return filteredResources, nil
 }
 
-// Return all resources for given resource group and types
+// Returns all resources for given resource group and types
 func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes []string) ([]string, error) {
 	apiVersion := "2018-02-01"
 
@@ -308,7 +308,7 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 	return resources, nil
 }
 
-// Return a filtered resource list based on a given resource list and regular expressions from the configuration
+// Returns a filtered resource list based on a given resource list and regular expressions from the configuration
 func (ac *AzureClient) filterResources(resources []string, resourceGroup config.ResourceGroup) []string {
 	filteredResources := []string{}
 
