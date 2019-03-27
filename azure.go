@@ -135,7 +135,7 @@ func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionR
 		if err != nil {
 			return nil, err
 		}
-		definitions[target.Resource] = def
+		definitions[target.Resource] = *def
 	}
 
 	for _, resourceGroup := range sc.C.ResourceGroups {
@@ -149,7 +149,7 @@ func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionR
 			if err != nil {
 				return nil, err
 			}
-			definitions[resource] = def
+			definitions[resource] = *def
 		}
 	}
 
@@ -157,34 +157,33 @@ func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionR
 }
 
 // Returns AzureMetricDefinitionResponse for a given resource
-func (ac *AzureClient) getAzureMetricDefinitionResponse(resource string) (AzureMetricDefinitionResponse, error) {
+func (ac *AzureClient) getAzureMetricDefinitionResponse(resource string) (*AzureMetricDefinitionResponse, error) {
 	apiVersion := "2018-01-01"
 
-	var def AzureMetricDefinitionResponse
 	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, resource)
 	metricsTarget := fmt.Sprintf("https://management.azure.com/%s/providers/microsoft.insights/metricDefinitions?api-version=%s", metricsResource, apiVersion)
 	req, err := http.NewRequest("GET", metricsTarget, nil)
 	if err != nil {
-		return def, fmt.Errorf("Error creating HTTP request: %v", err)
+		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
 	resp, err := ac.client.Do(req)
 	if err != nil {
-		return def, fmt.Errorf("Error: %v", err)
+		return nil, fmt.Errorf("Error: %v", err)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return def, fmt.Errorf("Error reading body of response: %v", err)
+		return nil, fmt.Errorf("Error reading body of response: %v", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return def, fmt.Errorf("Error: %v", string(body))
+		return nil, fmt.Errorf("Error: %v", string(body))
 	}
 
-	def = AzureMetricDefinitionResponse{}
-	err = json.Unmarshal(body, &def)
+	def := &AzureMetricDefinitionResponse{}
+	err = json.Unmarshal(body, def)
 	if err != nil {
-		return def, fmt.Errorf("Error unmarshalling response body: %v", err)
+		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
 
 	return def, nil
