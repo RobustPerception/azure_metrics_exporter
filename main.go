@@ -1,13 +1,13 @@
 package main
 
 import (
+	"github.com/FXInnovation/azure_metrics_exporter/config"
 	"log"
 	"net/http"
 	"os"
 	"regexp"
 	"strings"
 
-	"github.com/RobustPerception/azure_metrics_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
