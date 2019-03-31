@@ -136,6 +136,26 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			c.collectResource(ch, resource, metricsStr, resourceGroup.Aggregations)
 		}
 	}
+
+	for _, resourceTag := range sc.C.ResourceTags {
+		metrics := []string{}
+		for _, metric := range resourceTag.Metrics {
+			metrics = append(metrics, metric.Name)
+		}
+		metricsStr := strings.Join(metrics, ",")
+
+		filteredResources, err := ac.filteredListByTag(resourceTag)
+		if err != nil {
+			log.Printf("Failed to get resources for tag name %s, tag value %s and resource types %s: %v",
+				resourceTag.ResourceTagName, resourceTag.ResourceTagValue, resourceTag.ResourceTypes, err)
+			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
+			return
+		}
+
+		for _, resource := range filteredResources {
+			c.collectResource(ch, resource, metricsStr, resourceTag.Aggregations)
+		}
+	}
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {

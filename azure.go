@@ -253,6 +253,15 @@ func (ac *AzureClient) filteredListFromResourceGroup(resourceGroup config.Resour
 	return filteredResources, nil
 }
 
+// Returns resource list filtered by tag name and tag value
+func (ac *AzureClient) filteredListByTag(resourceTag config.ResourceTag) ([]string, error) {
+	resources, err := ac.listByTag(resourceTag.ResourceTagName, resourceTag.ResourceTagValue, resourceTag.ResourceTypes)
+	if err != nil {
+		return nil, err
+	}
+	return resources, nil
+}
+
 // Returns all resources for given resource group and types
 func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes []string) ([]string, error) {
 	apiVersion := "2018-02-01"
@@ -293,8 +302,57 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
 
-	var resources []string
+	resources := extractMetricNames(data, subscription)
 
+	return resources, nil
+}
+
+func (ac *AzureClient) listByTag(tagName string, tagValue string, resourceTypes []string) ([]string, error) {
+	apiVersion := "2018-02-01"
+
+	var filterTypesElements []string
+	for _, filterType := range resourceTypes {
+		filterTypesElements = append(filterTypesElements, fmt.Sprintf("resourcetype eq '%s'", filterType))
+	}
+	filterTypes := url.QueryEscape(strings.Join(filterTypesElements, " or ") + fmt.Sprintf(" and tagName eq '%s' and tagValue eq '%s", tagName, tagValue))
+
+	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
+
+	metricValueEndpoint := fmt.Sprintf("https://management.azure.com/%s/resources?api-version=%s&$filter=%s", subscription, apiVersion, filterTypes)
+
+	req, err := http.NewRequest("GET", metricValueEndpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
+
+	resp, err := ac.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Error: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("Unable to query resource API with status code: %d", resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("Error reading body of response: %v", err)
+	}
+
+	var data AzureResourceListResponse
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
+	}
+
+	resources := extractMetricNames(data, subscription)
+
+	return resources, nil
+}
+
+func extractMetricNames(data AzureResourceListResponse, subscription string) []string {
+	var resources []string
 	for _, result := range data.Value {
 		// subscription + leading '/'
 		subscriptionPrefixLen := len(subscription) + 1
@@ -302,8 +360,7 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 		// remove subscription from path to match manually specified ones
 		resources = append(resources, result.Id[subscriptionPrefixLen:])
 	}
-
-	return resources, nil
+	return resources
 }
 
 // Returns a filtered resource list based on a given resource list and regular expressions from the configuration
