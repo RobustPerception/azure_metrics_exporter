@@ -276,24 +276,10 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 
 	metricValueEndpoint := fmt.Sprintf("https://management.azure.com/%s/resourceGroups/%s/resources?api-version=%s&$filter=%s", subscription, resourceGroup, apiVersion, filterTypes)
 
-	req, err := http.NewRequest("GET", metricValueEndpoint, nil)
-	if err != nil {
-		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
+	body, err := getAzureMonitorResponse(metricValueEndpoint)
 
-	resp, err := ac.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("Unable to query resource group API with status code: %d", resp.StatusCode)
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("Error reading body of response: %v", err)
+		return nil, err
 	}
 
 	var data AzureResourceListResponse
@@ -307,6 +293,7 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 	return resources, nil
 }
 
+// Returns all resource of the given types and with the given couple tagname, tagvalue
 func (ac *AzureClient) listByTag(tagName string, tagValue string, resourceTypes []string) ([]string, error) {
 	apiVersion := "2018-02-01"
 
@@ -320,7 +307,25 @@ func (ac *AzureClient) listByTag(tagName string, tagValue string, resourceTypes 
 
 	metricValueEndpoint := fmt.Sprintf("https://management.azure.com/%s/resources?api-version=%s&$filter=%s", subscription, apiVersion, filterTypes)
 
-	req, err := http.NewRequest("GET", metricValueEndpoint, nil)
+	body, err := getAzureMonitorResponse(metricValueEndpoint)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var data AzureResourceListResponse
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
+	}
+
+	resources := extractMetricNames(data, subscription)
+
+	return resources, nil
+}
+
+func getAzureMonitorResponse(azureManagementEndpoint string) ([]byte, error) {
+	req, err := http.NewRequest("GET", azureManagementEndpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
 	}
@@ -339,16 +344,8 @@ func (ac *AzureClient) listByTag(tagName string, tagValue string, resourceTypes 
 	if err != nil {
 		return nil, fmt.Errorf("Error reading body of response: %v", err)
 	}
+	return body, err
 
-	var data AzureResourceListResponse
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
-	}
-
-	resources := extractMetricNames(data, subscription)
-
-	return resources, nil
 }
 
 func extractMetricNames(data AzureResourceListResponse, subscription string) []string {
