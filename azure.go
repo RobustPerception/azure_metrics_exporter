@@ -255,7 +255,7 @@ func (ac *AzureClient) filteredListFromResourceGroup(resourceGroup config.Resour
 
 // Returns resource list filtered by tag name and tag value
 func (ac *AzureClient) filteredListByTag(resourceTag config.ResourceTag) ([]string, error) {
-	resources, err := ac.listByTag(resourceTag.ResourceTagName, resourceTag.ResourceTagValue, resourceTag.ResourceTypes)
+	resources, err := ac.listByTag(resourceTag.ResourceTagName, resourceTag.ResourceTagValue)
 	if err != nil {
 		return nil, err
 	}
@@ -293,15 +293,11 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 	return resources, nil
 }
 
-// Returns all resource of the given types and with the given couple tagname, tagvalue
-func (ac *AzureClient) listByTag(tagName string, tagValue string, resourceTypes []string) ([]string, error) {
-	apiVersion := "2018-02-01"
+// Returns all resource with the given couple tagname, tagvalue
+func (ac *AzureClient) listByTag(tagName string, tagValue string) ([]string, error) {
+	apiVersion := "2018-05-01"
 
-	var filterTypesElements []string
-	for _, filterType := range resourceTypes {
-		filterTypesElements = append(filterTypesElements, fmt.Sprintf("resourcetype eq '%s'", filterType))
-	}
-	filterTypes := url.QueryEscape(strings.Join(filterTypesElements, " or ") + fmt.Sprintf(" and tagName eq '%s' and tagValue eq '%s", tagName, tagValue))
+	filterTypes := url.QueryEscape(fmt.Sprintf("tagName eq '%s' and tagValue eq '%s'", tagName, tagValue))
 
 	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
 
@@ -336,11 +332,12 @@ func getAzureMonitorResponse(azureManagementEndpoint string) ([]byte, error) {
 		return nil, fmt.Errorf("Error: %v", err)
 	}
 	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("Unable to query resource API with status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("Unable to query resource API with status code: %d with body: %s", resp.StatusCode, body)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("Error reading body of response: %v", err)
 	}

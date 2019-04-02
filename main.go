@@ -146,8 +146,8 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 
 		filteredResources, err := ac.filteredListByTag(resourceTag)
 		if err != nil {
-			log.Printf("Failed to get resources for tag name %s, tag value %s and resource types %s: %v",
-				resourceTag.ResourceTagName, resourceTag.ResourceTagValue, resourceTag.ResourceTypes, err)
+			log.Printf("Failed to get resources for tag name %s, tag value %s: %v",
+				resourceTag.ResourceTagName, resourceTag.ResourceTagValue, err)
 			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
 			return
 		}

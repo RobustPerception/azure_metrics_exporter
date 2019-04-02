@@ -87,8 +87,6 @@ resource_groups:
 resource_tags:
   - resource_tag_name: "group"
     resource_tag_value: "tomonitor"
-    resources_types:
-    - "Microsoft.Compute/virtualMachines"
     metrics:
     - name: "CPU Credits Consumed"
 
@@ -112,6 +110,16 @@ Metrics of all matched resources are exported (defaults to include all)
 List of regexps that is matched against the resource name.
 Metrics of all matched resources are ignored (defaults to exclude none)
 Excludes take precedence over the include filter.
+
+### Resource tag filtering
+
+Resources having a specific tag can be filtered:
+
+`resource_tag_name`:
+Name of the tag to be filtered against.
+
+`resource_tag_value`:
+Value that must me matched for the tag name passed.
 
 ## Prometheus configuration
 

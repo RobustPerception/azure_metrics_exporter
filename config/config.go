@@ -145,7 +145,6 @@ type ResourceGroup struct {
 type ResourceTag struct {
 	ResourceTagName  string   `yaml:"resource_tag_name"`
 	ResourceTagValue string   `yaml:"resource_tag_value"`
-	ResourceTypes    []string `yaml:"resource_types"`
 	Metrics          []Metric `yaml:"metrics"`
 	Aggregations     []string `yaml:"aggregations"`
 
