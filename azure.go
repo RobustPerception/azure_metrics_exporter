@@ -345,7 +345,8 @@ func getAzureMonitorResponse(azureManagementEndpoint string) ([]byte, error) {
 
 }
 
-func extractMetricNames(data AzureResourceListResponse, subscription string) []string {
+// Extract resource names from the AzureResourceListResponse
+func extractResourceNames(data AzureResourceListResponse, subscription string) []string {
 	var resources []string
 	for _, result := range data.Value {
 		// subscription + leading '/'
