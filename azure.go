@@ -274,9 +274,9 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 
 	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
 
-	metricValueEndpoint := fmt.Sprintf("https://management.azure.com/%s/resourceGroups/%s/resources?api-version=%s&$filter=%s", subscription, resourceGroup, apiVersion, filterTypes)
+	resourcesEndpoint := fmt.Sprintf("https://management.azure.com/%s/resourceGroups/%s/resources?api-version=%s&$filter=%s", subscription, resourceGroup, apiVersion, filterTypes)
 
-	body, err := getAzureMonitorResponse(metricValueEndpoint)
+	body, err := getAzureMonitorResponse(resourcesEndpoint)
 
 	if err != nil {
 		return nil, err
@@ -288,7 +288,7 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
 
-	resources := extractMetricNames(data, subscription)
+	resources := extractResourceNames(data, subscription)
 
 	return resources, nil
 }
