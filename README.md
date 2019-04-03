@@ -119,7 +119,7 @@ Resources having a specific tag name and tag value can be filtered:
 Name of the tag to be filtered against.
 
 `resource_tag_value`:
-Value that must me matched for the tag name passed.
+Value of the tag to be filtered against.
 
 ## Prometheus configuration
 
