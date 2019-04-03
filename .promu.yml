@@ -1,7 +1,7 @@
 go:
     cgo: false
 repository:
-    path: github.com/FXInnovation/azure_metrics_exporter
+    path: github.com/RobustPerception/azure_metrics_exporter
 build:
     binaries:
         - name: azure_metrics_exporter
