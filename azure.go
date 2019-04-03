@@ -301,9 +301,9 @@ func (ac *AzureClient) listByTag(tagName string, tagValue string) ([]string, err
 
 	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
 
-	metricValueEndpoint := fmt.Sprintf("https://management.azure.com/%s/resources?api-version=%s&$filter=%s", subscription, apiVersion, filterTypes)
+	resourcesEndpoint := fmt.Sprintf("https://management.azure.com/%s/resources?api-version=%s&$filter=%s", subscription, apiVersion, filterTypes)
 
-	body, err := getAzureMonitorResponse(metricValueEndpoint)
+	body, err := getAzureMonitorResponse(resourcesEndpoint)
 
 	if err != nil {
 		return nil, err
@@ -315,7 +315,7 @@ func (ac *AzureClient) listByTag(tagName string, tagValue string) ([]string, err
 		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
 
-	resources := extractMetricNames(data, subscription)
+	resources := extractResourceNames(data, subscription)
 
 	return resources, nil
 }
