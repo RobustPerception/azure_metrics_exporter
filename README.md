@@ -113,7 +113,7 @@ Excludes take precedence over the include filter.
 
 ### Resource tag filtering
 
-Resources having a specific tag can be filtered:
+Resources having a specific tag name and tag value can be filtered:
 
 `resource_tag_name`:
 Name of the tag to be filtered against.
