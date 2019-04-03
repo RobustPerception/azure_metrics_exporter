@@ -335,7 +335,7 @@ func getAzureMonitorResponse(azureManagementEndpoint string) ([]byte, error) {
 	body, err := ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("Unable to query resource API with status code: %d with body: %s", resp.StatusCode, body)
+		return nil, fmt.Errorf("Unable to query API with status code: %d and with body: %s", resp.StatusCode, body)
 	}
 
 	if err != nil {
