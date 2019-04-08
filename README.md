@@ -23,7 +23,7 @@ This will print your resource id's application/service name along with a list of
 `resource_manager_url` is Azure API management url.
 
 These parameters are in the configuration because of the differences between national clouds (e.g. AzureChina cloud has another endpoints).
-You can find ednpoints for national clouds [here](http://www.azurespeed.com/Information/AzureEnvironments)
+You can find endpoints for national clouds [here](http://www.azurespeed.com/Information/AzureEnvironments)
 
 `azure_resource_id` and `subscription_id` can be found under properties in the Azure portal for your application/service.
 
