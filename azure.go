@@ -162,6 +162,7 @@ func (ac *AzureClient) getAzureMetricDefinitionResponse(resource string) (*Azure
 
 	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, resource)
 	metricsTarget := fmt.Sprintf("%s/%s/providers/microsoft.insights/metricDefinitions?api-version=%s", sc.C.ResourceManagerUrl, metricsResource, apiVersion)
+  
 	req, err := http.NewRequest("GET", metricsTarget, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating HTTP request: %v", err)

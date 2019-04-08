@@ -24,6 +24,7 @@ var (
 	listenAddress         = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9276").String()
 	listMetricDefinitions = kingpin.Flag("list.definitions", "List available metric definitions for the given resources and exit.").Bool()
 	invalidMetricChars    = regexp.MustCompile("[^a-zA-Z0-9_:]")
+	azureErrorDesc        = prometheus.NewDesc("azure_error", "Error collecting metrics", nil, nil)
 )
 
 func init() {
@@ -101,7 +102,7 @@ func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	if err := ac.refreshAccessToken(); err != nil {
 		log.Println(err)
-		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("azure_error", "Error collecting metrics", nil, nil), err)
+		ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
 		return
 	}
 
@@ -116,49 +117,23 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		c.collectResource(ch, target.Resource, metricsStr, target.Aggregations)
 	}
 
-	for _, target := range sc.C.ResourceGroups {
+	for _, resourceGroup := range sc.C.ResourceGroups {
 		metrics := []string{}
-		for _, metric := range target.Metrics {
+		for _, metric := range resourceGroup.Metrics {
 			metrics = append(metrics, metric.Name)
 		}
 		metricsStr := strings.Join(metrics, ",")
 
-		resources, err := ac.listFromResourceGroup(target.ResourceGroup, target.ResourceTypes)
+		filteredResources, err := ac.filteredListFromResourceGroup(resourceGroup)
 		if err != nil {
-			continue
+			log.Printf("Failed to get resources for resource group %s and resource types %s: %v",
+				resourceGroup.ResourceGroup, resourceGroup.ResourceTypes, err)
+			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
+			return
 		}
 
-		for _, resource := range resources {
-			resource_parts := strings.Split(resource, "/")
-			resource_name := resource_parts[len(resource_parts)-1]
-
-			if len(target.ResourceNameIncludeRe) != 0 {
-				include := false
-				for _, rx := range target.ResourceNameIncludeRe {
-					if rx.MatchString(resource_name) {
-						include = true
-						break
-					}
-				}
-
-				if !include {
-					continue
-				}
-			}
-
-			exclude := false
-			for _, rx := range target.ResourceNameExcludeRe {
-				if rx.MatchString(resource_name) {
-					exclude = true
-					break
-				}
-			}
-
-			if exclude {
-				continue
-			}
-
-			c.collectResource(ch, resource, metricsStr, target.Aggregations)
+		for _, resource := range filteredResources {
+			c.collectResource(ch, resource, metricsStr, resourceGroup.Aggregations)
 		}
 	}
 }
