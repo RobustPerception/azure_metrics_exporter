@@ -19,6 +19,11 @@ In order to get all the metric definitions for the resources specified in your c
 This will print your resource id's application/service name along with a list of each of the available metric definitions that you can query for for that resource.
 
 # Example azure-metrics-exporter config
+`active_directory_authority_url` is AzureAD url for getting access token.
+`resource_manager_url` is Azure API management url.
+
+Theese parameters are in the confoguration because of the differences between national clouds (e.g. AzureChina cloud has another endpoints).
+You can find ednpoints for national clouds [here](http://www.azurespeed.com/Information/AzureEnvironments)
 
 `azure_resource_id` and `subscription_id` can be found under properties in the Azure portal for your application/service.
 
@@ -33,6 +38,8 @@ The `client_id` and `client_secret` are obtained by registering an application u
 Then for the resource group your application is apart of, create a new IAM reader role for the created app under 'Azure Active Directory'.
 
 ```
+active_directory_authority_url: "https://login.microsoftonline.com/"
+resource_manager_url: "https://management.azure.com/"
 credentials:
   subscription_id: <secret>
   client_id: <secret>

@@ -1,6 +1,6 @@
 ---
-activeDirectoryAuthorityUrl: "https://login.microsoftonline.com/"
-resourceManagerUrl: "https://management.azure.com/"
+active_directory_authority_url: "https://login.microsoftonline.com/"
+resource_manager_url: "https://management.azure.com/"
 credentials:
   subscription_id: <secret>
   client_id: <secret>
