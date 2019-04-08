@@ -12,9 +12,12 @@ import (
 
 // Config - Azure exporter configuration
 type Config struct {
-	Credentials    Credentials     `yaml:"credentials"`
-	Targets        []Target        `yaml:"targets"`
-	ResourceGroups []ResourceGroup `yaml:"resource_groups"`
+// Config - Azure exporter configuration
+	ActiveDirectoryAuthorityUrl      string          `yaml:"activeDirectoryAuthorityUrl"`
+	ResourceManagerUrl               string          `yaml:"resourceManagerUrl"`
+	Credentials                      Credentials     `yaml:"credentials"`
+	Targets                          []Target        `yaml:"targets"`
+	ResourceGroups                   []ResourceGroup `yaml:"resource_groups"`
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline"`
