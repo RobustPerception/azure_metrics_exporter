@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/RobustPerception/azure_metrics_exporter/config"
 )
 
 // AzureMetricDefinitionResponse represents metric definition response for a given resource from Azure.
@@ -123,40 +125,68 @@ func (ac *AzureClient) getAccessToken() error {
 	return nil
 }
 
-// Loop through all specified resource targets and get their respective metric definitions.
+// Returns metric definitions for all configured target and resource groups
 func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionResponse, error) {
-	apiVersion := "2018-01-01"
+
 	definitions := make(map[string]AzureMetricDefinitionResponse)
 
 	for _, target := range sc.C.Targets {
-		metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, target.Resource)
-		metricsTarget := fmt.Sprintf("%s/%s/providers/microsoft.insights/metricDefinitions?api-version=%s", sc.C.ResourceManagerUrl, metricsResource, apiVersion)
-		req, err := http.NewRequest("GET", metricsTarget, nil)
+		def, err := ac.getAzureMetricDefinitionResponse(target.Resource)
 		if err != nil {
-			return nil, fmt.Errorf("Error creating HTTP request: %v", err)
+			return nil, err
 		}
-		req.Header.Set("Authorization", "Bearer "+ac.accessToken)
-		resp, err := ac.client.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("Error: %v", err)
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("Error reading body of response: %v", err)
-		}
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("Error: %v", string(body))
-		}
-
-		def := AzureMetricDefinitionResponse{}
-		err = json.Unmarshal(body, &def)
-		if err != nil {
-			return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
-		}
-		definitions[target.Resource] = def
+		definitions[target.Resource] = *def
 	}
+
+	for _, resourceGroup := range sc.C.ResourceGroups {
+		resources, err := ac.filteredListFromResourceGroup(resourceGroup)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get resources for resource group %s and resource types %s: %v",
+				resourceGroup.ResourceGroup, resourceGroup.ResourceTypes, err)
+		}
+		for _, resource := range resources {
+			def, err := ac.getAzureMetricDefinitionResponse(resource)
+			if err != nil {
+				return nil, err
+			}
+			definitions[resource] = *def
+		}
+	}
+
 	return definitions, nil
+}
+
+// Returns AzureMetricDefinitionResponse for a given resource
+func (ac *AzureClient) getAzureMetricDefinitionResponse(resource string) (*AzureMetricDefinitionResponse, error) {
+	apiVersion := "2018-01-01"
+
+	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, resource)
+	metricsTarget := fmt.Sprintf("%s/%s/providers/microsoft.insights/metricDefinitions?api-version=%s", sc.C.ResourceManagerUrl, metricsResource, apiVersion)
+	req, err := http.NewRequest("GET", metricsTarget, nil)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
+	resp, err := ac.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Error: %v", err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("Error reading body of response: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Error: %v", string(body))
+	}
+
+	def := &AzureMetricDefinitionResponse{}
+	err = json.Unmarshal(body, def)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
+	}
+
+	return def, nil
 }
 
 func (ac *AzureClient) getMetricValue(resource string, metricNames string, aggregations []string) (AzureMetricValueResponse, error) {
@@ -214,6 +244,17 @@ func (ac *AzureClient) getMetricValue(resource string, metricNames string, aggre
 	return data, nil
 }
 
+// Returns resource list resolved and filtered from resource_groups configuration
+func (ac *AzureClient) filteredListFromResourceGroup(resourceGroup config.ResourceGroup) ([]string, error) {
+	resources, err := ac.listFromResourceGroup(resourceGroup.ResourceGroup, resourceGroup.ResourceTypes)
+	if err != nil {
+		return nil, err
+	}
+	filteredResources := ac.filterResources(resources, resourceGroup)
+	return filteredResources, nil
+}
+
+// Returns all resources for given resource group and types
 func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes []string) ([]string, error) {
 	apiVersion := "2018-02-01"
 
@@ -264,6 +305,46 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 	}
 
 	return resources, nil
+}
+
+// Returns a filtered resource list based on a given resource list and regular expressions from the configuration
+func (ac *AzureClient) filterResources(resources []string, resourceGroup config.ResourceGroup) []string {
+	filteredResources := []string{}
+
+	for _, resource := range resources {
+		resourceParts := strings.Split(resource, "/")
+		resourceName := resourceParts[len(resourceParts)-1]
+
+		if len(resourceGroup.ResourceNameIncludeRe) != 0 {
+			include := false
+			for _, rx := range resourceGroup.ResourceNameIncludeRe {
+				if rx.MatchString(resourceName) {
+					include = true
+					break
+				}
+			}
+
+			if !include {
+				continue
+			}
+		}
+
+		exclude := false
+		for _, rx := range resourceGroup.ResourceNameExcludeRe {
+			if rx.MatchString(resourceName) {
+				exclude = true
+				break
+			}
+		}
+
+		if exclude {
+			continue
+		}
+
+		filteredResources = append(filteredResources, resource)
+	}
+
+	return filteredResources
 }
 
 func (ac *AzureClient) refreshAccessToken() error {
