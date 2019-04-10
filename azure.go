@@ -297,8 +297,9 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 // Returns all resource with the given couple tagname, tagvalue
 func (ac *AzureClient) listByTag(tagName string, tagValue string) ([]string, error) {
 	apiVersion := "2018-05-01"
-
-	filterTypes := url.QueryEscape(fmt.Sprintf("tagName eq '%s' and tagValue eq '%s'", tagName, tagValue))
+	securedTagName := secureString(tagName)
+	securedTagValue := secureString(tagValue)
+	filterTypes := url.QueryEscape(fmt.Sprintf("tagName eq '%s' and tagValue eq '%s'", securedTagName, securedTagValue))
 
 	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
 
@@ -320,6 +321,12 @@ func (ac *AzureClient) listByTag(tagName string, tagValue string) ([]string, err
 
 	return resources, nil
 }
+
+func secureString(value string) string {
+	securedValue := strings.ReplaceAll(value, "'", "")
+	return securedValue
+}
+
 
 func getAzureMonitorResponse(azureManagementEndpoint string) ([]byte, error) {
 	req, err := http.NewRequest("GET", azureManagementEndpoint, nil)
