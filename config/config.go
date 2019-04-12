@@ -13,8 +13,8 @@ import (
 // Config - Azure exporter configuration
 type Config struct {
 // Config - Azure exporter configuration
-	ActiveDirectoryAuthorityUrl      string          `yaml:"active_directory_authority_url"`
-	ResourceManagerUrl               string          `yaml:"resource_manager_url"`
+	ActiveDirectoryAuthorityURL      string          `yaml:"active_directory_authority_url"`
+	ResourceManagerURL               string          `yaml:"resource_manager_url"`
 	Credentials                      Credentials     `yaml:"credentials"`
 	Targets                          []Target        `yaml:"targets"`
 	ResourceGroups                   []ResourceGroup `yaml:"resource_groups"`
