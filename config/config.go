@@ -31,7 +31,10 @@ type SafeConfig struct {
 
 // ReloadConfig - allows for live reloads of the configuration file.
 func (sc *SafeConfig) ReloadConfig(confFile string) (err error) {
-	var c = &Config{}
+	var c = &Config{
+		ActiveDirectoryAuthorityURL: "https://login.microsoftonline.com/",
+		ResourceManagerURL: "https://management.azure.com/",
+	}
 
 	yamlFile, err := ioutil.ReadFile(confFile)
 	if err != nil {
