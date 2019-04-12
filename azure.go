@@ -90,10 +90,10 @@ func NewAzureClient() *AzureClient {
 }
 
 func (ac *AzureClient) getAccessToken() error {
-	target := fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/token", sc.C.Credentials.TenantID)
+	target := fmt.Sprintf("%s/%s/oauth2/token", sc.C.ActiveDirectoryAuthorityURL, sc.C.Credentials.TenantID)
 	form := url.Values{
 		"grant_type":    {"client_credentials"},
-		"resource":      {"https://management.azure.com/"},
+		"resource":      {sc.C.ResourceManagerURL},
 		"client_id":     {sc.C.Credentials.ClientID},
 		"client_secret": {sc.C.Credentials.ClientSecret},
 	}
@@ -161,7 +161,7 @@ func (ac *AzureClient) getAzureMetricDefinitionResponse(resource string) (*Azure
 	apiVersion := "2018-01-01"
 
 	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, resource)
-	metricsTarget := fmt.Sprintf("https://management.azure.com/%s/providers/microsoft.insights/metricDefinitions?api-version=%s", metricsResource, apiVersion)
+	metricsTarget := fmt.Sprintf("%s/%s/providers/microsoft.insights/metricDefinitions?api-version=%s", sc.C.ResourceManagerURL, metricsResource, apiVersion)
 	req, err := http.NewRequest("GET", metricsTarget, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
@@ -195,7 +195,7 @@ func (ac *AzureClient) getMetricValue(resource string, metricNames string, aggre
 	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, resource)
 	endTime, startTime := GetTimes()
 
-	metricValueEndpoint := fmt.Sprintf("https://management.azure.com/%s/providers/microsoft.insights/metrics", metricsResource)
+	metricValueEndpoint := fmt.Sprintf("%s/%s/providers/microsoft.insights/metrics", sc.C.ResourceManagerURL, metricsResource)
 
 	req, err := http.NewRequest("GET", metricValueEndpoint, nil)
 	if err != nil {
@@ -266,7 +266,7 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 
 	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
 
-	metricValueEndpoint := fmt.Sprintf("https://management.azure.com/%s/resourceGroups/%s/resources?api-version=%s&$filter=%s", subscription, resourceGroup, apiVersion, filterTypes)
+	metricValueEndpoint := fmt.Sprintf("%s/%s/resourceGroups/%s/resources?api-version=%s&$filter=%s", sc.C.ResourceManagerURL, subscription, resourceGroup, apiVersion, filterTypes)
 
 	req, err := http.NewRequest("GET", metricValueEndpoint, nil)
 	if err != nil {

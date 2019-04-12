@@ -12,9 +12,12 @@ import (
 
 // Config - Azure exporter configuration
 type Config struct {
-	Credentials    Credentials     `yaml:"credentials"`
-	Targets        []Target        `yaml:"targets"`
-	ResourceGroups []ResourceGroup `yaml:"resource_groups"`
+// Config - Azure exporter configuration
+	ActiveDirectoryAuthorityURL      string          `yaml:"active_directory_authority_url"`
+	ResourceManagerURL               string          `yaml:"resource_manager_url"`
+	Credentials                      Credentials     `yaml:"credentials"`
+	Targets                          []Target        `yaml:"targets"`
+	ResourceGroups                   []ResourceGroup `yaml:"resource_groups"`
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline"`
@@ -28,7 +31,10 @@ type SafeConfig struct {
 
 // ReloadConfig - allows for live reloads of the configuration file.
 func (sc *SafeConfig) ReloadConfig(confFile string) (err error) {
-	var c = &Config{}
+	var c = &Config{
+		ActiveDirectoryAuthorityURL: "https://login.microsoftonline.com/",
+		ResourceManagerURL: "https://management.azure.com/",
+	}
 
 	yamlFile, err := ioutil.ReadFile(confFile)
 	if err != nil {

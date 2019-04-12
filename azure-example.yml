@@ -1,5 +1,6 @@
 ---
-  
+active_directory_authority_url: "https://login.microsoftonline.com/"
+resource_manager_url: "https://management.azure.com/"
 credentials:
   subscription_id: <secret>
   client_id: <secret>
@@ -9,20 +10,20 @@ credentials:
 targets:
   - resource: "/resourceGroups/blog-group/providers/Microsoft.Web/sites/blog"
     metrics:
-    - name: "BytesReceived"
-    - name: "BytesSent"
+      - name: "BytesReceived"
+      - name: "BytesSent"
   - resource: "/resourceGroups/app-group/providers/Microsoft.Web/sites/app"
     metrics:
-    - name: "Http2xx"
-    - name: "Http5xx"
+      - name: "Http2xx"
+      - name: "Http5xx"
 
 resource_groups:
   - resource_group: "webapps"
     resource_types:
-    - "Microsoft.Compute/virtualMachines"
+      - "Microsoft.Compute/virtualMachines"
     resource_name_include_re:
-    - "testvm.*"
+      - "testvm.*"
     resource_name_exclude_re:
-    - "testvm12"
+      - "testvm12"
     metrics:
-    - name: "CPU Credits Consumed"
+      - name: "CPU Credits Consumed"
