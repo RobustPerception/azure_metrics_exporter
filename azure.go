@@ -323,7 +323,8 @@ func (ac *AzureClient) listByTag(tagName string, tagValue string) ([]string, err
 }
 
 func secureString(value string) string {
-	securedValue := strings.ReplaceAll(value, "'", "")
+	securedValue := strings.ReplaceAll(value, "'", "\\'")
+	fmt.Printf("string returned{%s}", securedValue)
 	return securedValue
 }
 
