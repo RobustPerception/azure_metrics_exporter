@@ -12,12 +12,12 @@ import (
 
 // Config - Azure exporter configuration
 type Config struct {
-// Config - Azure exporter configuration
 	ActiveDirectoryAuthorityURL      string          `yaml:"active_directory_authority_url"`
 	ResourceManagerURL               string          `yaml:"resource_manager_url"`
-	Credentials                      Credentials     `yaml:"credentials"`
-	Targets                          []Target        `yaml:"targets"`
-	ResourceGroups                   []ResourceGroup `yaml:"resource_groups"`
+	Credentials    Credentials     `yaml:"credentials"`
+	Targets        []Target        `yaml:"targets"`
+	ResourceGroups []ResourceGroup `yaml:"resource_groups"`
+	ResourceTags   []ResourceTag   `yaml:"resource_tags"`
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline"`
@@ -142,6 +142,16 @@ type ResourceGroup struct {
 	ResourceNameExcludeRe []Regexp `yaml:"resource_name_exclude_re"`
 	Metrics               []Metric `yaml:"metrics"`
 	Aggregations          []string `yaml:"aggregations"`
+
+	XXX map[string]interface{} `yaml:",inline"`
+}
+
+// ResourceTag selects resources with tag name and tag value
+type ResourceTag struct {
+	ResourceTagName  string   `yaml:"resource_tag_name"`
+	ResourceTagValue string   `yaml:"resource_tag_value"`
+	Metrics          []Metric `yaml:"metrics"`
+	Aggregations     []string `yaml:"aggregations"`
 
 	XXX map[string]interface{} `yaml:",inline"`
 }

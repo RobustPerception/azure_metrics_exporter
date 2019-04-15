@@ -90,6 +90,12 @@ resource_groups:
     metrics:
     - name: "CPU Credits Consumed"
 
+resource_tags:
+  - resource_tag_name: "group"
+    resource_tag_value: "tomonitor"
+    metrics:
+    - name: "CPU Credits Consumed"
+
 ```
 
 By default, all aggregations are returned (`Total`, `Maximum`, `Average`, `Minimum`). It can be overridden per resource.
@@ -110,6 +116,16 @@ Metrics of all matched resources are exported (defaults to include all)
 List of regexps that is matched against the resource name.
 Metrics of all matched resources are ignored (defaults to exclude none)
 Excludes take precedence over the include filter.
+
+### Resource tag filtering
+
+Resources having a specific tag name and tag value can be filtered:
+
+`resource_tag_name`:
+Name of the tag to be filtered against.
+
+`resource_tag_value`:
+Value of the tag to be filtered against.
 
 ## Prometheus configuration
 

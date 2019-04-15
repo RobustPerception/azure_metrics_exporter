@@ -254,6 +254,15 @@ func (ac *AzureClient) filteredListFromResourceGroup(resourceGroup config.Resour
 	return filteredResources, nil
 }
 
+// Returns resource list filtered by tag name and tag value
+func (ac *AzureClient) filteredListByTag(resourceTag config.ResourceTag) ([]string, error) {
+	resources, err := ac.listByTag(resourceTag.ResourceTagName, resourceTag.ResourceTagValue)
+	if err != nil {
+		return nil, err
+	}
+	return resources, nil
+}
+
 // Returns all resources for given resource group and types
 func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes []string) ([]string, error) {
 	apiVersion := "2018-02-01"
@@ -266,9 +275,61 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 
 	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
 
-	metricValueEndpoint := fmt.Sprintf("%s/%s/resourceGroups/%s/resources?api-version=%s&$filter=%s", sc.C.ResourceManagerURL, subscription, resourceGroup, apiVersion, filterTypes)
+	resourcesEndpoint := fmt.Sprintf("%s/%s/resourceGroups/%s/resources?api-version=%s&$filter=%s", sc.C.ResourceManagerURL, subscription, resourceGroup, apiVersion, filterTypes)
 
-	req, err := http.NewRequest("GET", metricValueEndpoint, nil)
+	body, err := getAzureMonitorResponse(resourcesEndpoint)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var data AzureResourceListResponse
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
+	}
+
+	resources := extractResourceNames(data, subscription)
+
+	return resources, nil
+}
+
+// Returns all resource with the given couple tagname, tagvalue
+func (ac *AzureClient) listByTag(tagName string, tagValue string) ([]string, error) {
+	apiVersion := "2018-05-01"
+	securedTagName := secureString(tagName)
+	securedTagValue := secureString(tagValue)
+	filterTypes := url.QueryEscape(fmt.Sprintf("tagName eq '%s' and tagValue eq '%s'", securedTagName, securedTagValue))
+
+	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
+
+	resourcesEndpoint := fmt.Sprintf("%s/%s/resources?api-version=%s&$filter=%s", sc.C.ResourceManagerURL,subscription, apiVersion, filterTypes)
+
+	body, err := getAzureMonitorResponse(resourcesEndpoint)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var data AzureResourceListResponse
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
+	}
+
+	resources := extractResourceNames(data, subscription)
+
+	return resources, nil
+}
+
+func secureString(value string) string {
+	securedValue := strings.Replace(value, "'", "\\'", -1)
+	return securedValue
+}
+
+
+func getAzureMonitorResponse(azureManagementEndpoint string) ([]byte, error) {
+	req, err := http.NewRequest("GET", azureManagementEndpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
 	}
@@ -279,23 +340,22 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 		return nil, fmt.Errorf("Error: %v", err)
 	}
 	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("Unable to query resource group API with status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("Unable to query API with status code: %d and with body: %s", resp.StatusCode, body)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("Error reading body of response: %v", err)
 	}
+	return body, err
 
-	var data AzureResourceListResponse
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
-	}
+}
 
+// Extract resource names from the AzureResourceListResponse
+func extractResourceNames(data AzureResourceListResponse, subscription string) []string {
 	var resources []string
-
 	for _, result := range data.Value {
 		// subscription + leading '/'
 		subscriptionPrefixLen := len(subscription) + 1
@@ -303,8 +363,7 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 		// remove subscription from path to match manually specified ones
 		resources = append(resources, result.Id[subscriptionPrefixLen:])
 	}
-
-	return resources, nil
+	return resources
 }
 
 // Returns a filtered resource list based on a given resource list and regular expressions from the configuration

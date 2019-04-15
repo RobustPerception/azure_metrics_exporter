@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/RobustPerception/azure_metrics_exporter/config"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
@@ -134,6 +135,26 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 
 		for _, resource := range filteredResources {
 			c.collectResource(ch, resource, metricsStr, resourceGroup.Aggregations)
+		}
+	}
+
+	for _, resourceTag := range sc.C.ResourceTags {
+		metrics := []string{}
+		for _, metric := range resourceTag.Metrics {
+			metrics = append(metrics, metric.Name)
+		}
+		metricsStr := strings.Join(metrics, ",")
+
+		filteredResources, err := ac.filteredListByTag(resourceTag)
+		if err != nil {
+			log.Printf("Failed to get resources for tag name %s, tag value %s: %v",
+				resourceTag.ResourceTagName, resourceTag.ResourceTagValue, err)
+			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
+			return
+		}
+
+		for _, resource := range filteredResources {
+			c.collectResource(ch, resource, metricsStr, resourceTag.Aggregations)
 		}
 	}
 }
