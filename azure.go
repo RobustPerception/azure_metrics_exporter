@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -303,7 +305,7 @@ func (ac *AzureClient) listByTag(tagName string, tagValue string) ([]string, err
 
 	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
 
-	resourcesEndpoint := fmt.Sprintf("%s/%s/resources?api-version=%s&$filter=%s", sc.C.ResourceManagerURL,subscription, apiVersion, filterTypes)
+	resourcesEndpoint := fmt.Sprintf("%s/%s/resources?api-version=%s&$filter=%s", sc.C.ResourceManagerURL, subscription, apiVersion, filterTypes)
 
 	body, err := getAzureMonitorResponse(resourcesEndpoint)
 
@@ -326,7 +328,6 @@ func secureString(value string) string {
 	securedValue := strings.Replace(value, "'", "\\'", -1)
 	return securedValue
 }
-
 
 func getAzureMonitorResponse(azureManagementEndpoint string) ([]byte, error) {
 	req, err := http.NewRequest("GET", azureManagementEndpoint, nil)
@@ -417,4 +418,78 @@ func (ac *AzureClient) refreshAccessToken() error {
 	}
 
 	return nil
+}
+
+type batchRequest struct {
+	Requests []batchURL `json:"requests"`
+}
+type batchURL struct {
+	RelativeURL string `json:"relativeUrl"`
+	Method      string `json:"httpMethod"`
+}
+
+func (ac *AzureClient) doBlackMagic(resources []string) (string, error) {
+	const apiVersion = "2018-01-01"
+	apiURL := "https://management.azure.com/batch?api-version=2017-03-01"
+	log.Println("===========")
+	log.Println(resources)
+
+	batch := batchRequest{make([]batchURL, len(resources))}
+	for i, r := range resources {
+		metricNames := "Percentage CPU"
+		u := fmt.Sprintf(
+			"/subscriptions/%s%s/providers/microsoft.insights/metrics",
+			sc.C.Credentials.SubscriptionID,
+			r)
+		endTime, startTime := GetTimes()
+
+		values := url.Values{}
+		if metricNames != "" {
+			values.Add("metricnames", metricNames)
+		}
+		values.Add("aggregation", "Total,Average,Minimum,Maximum")
+		values.Add("timespan", fmt.Sprintf("%s/%s", startTime, endTime))
+		values.Add("api-version", apiVersion)
+
+		url := url.URL{
+			Path:     u,
+			RawQuery: values.Encode(),
+		}
+
+		batch.Requests[i] = batchURL{url.String(), "GET"}
+	}
+
+	var reqBody bytes.Buffer
+	enc := json.NewEncoder(&reqBody)
+	enc.SetEscapeHTML(false) // Azure does not handle the &:s becoming \u0026 in the urls
+	err := enc.Encode(batch)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest("POST", apiURL, &reqBody)
+	if err != nil {
+		return "", fmt.Errorf("Error creating HTTP request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
+
+	resp, err := ac.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("Error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var result map[string]interface{}
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return "", fmt.Errorf("Error unmarshalling response body: %v", err)
+	}
+
+	return fmt.Sprintf("%v", result), nil
 }

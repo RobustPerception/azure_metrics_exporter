@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/RobustPerception/azure_metrics_exporter/config"
 
@@ -101,6 +102,7 @@ func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string
 
 // Collect - collect results from Azure Montior API and create Prometheus metrics.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
+
 	if err := ac.refreshAccessToken(); err != nil {
 		log.Println(err)
 		ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
@@ -115,48 +117,66 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		}
 		metricsStr := strings.Join(metrics, ",")
 
+		xStart := time.Now()
 		c.collectResource(ch, target.Resource, metricsStr, target.Aggregations)
+		newDiagnostic(xStart, len(sc.C.Targets), "monitor-api")
 	}
 
-	for _, resourceGroup := range sc.C.ResourceGroups {
+	// SMELL this block is a duplicate. It is used to allow measuring single and batch requests separately.
+	for _, target := range sc.C.Targets {
 		metrics := []string{}
-		for _, metric := range resourceGroup.Metrics {
+		for _, metric := range target.Metrics {
 			metrics = append(metrics, metric.Name)
 		}
-		metricsStr := strings.Join(metrics, ",")
+		// metricsStr := strings.Join(metrics, ",")
 
-		filteredResources, err := ac.filteredListFromResourceGroup(resourceGroup)
-		if err != nil {
-			log.Printf("Failed to get resources for resource group %s and resource types %s: %v",
-				resourceGroup.ResourceGroup, resourceGroup.ResourceTypes, err)
-			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
-			return
-		}
-
-		for _, resource := range filteredResources {
-			c.collectResource(ch, resource, metricsStr, resourceGroup.Aggregations)
-		}
+		yStart := time.Now()
+		bm, _ := ac.doBlackMagic([]string{target.Resource})
+		newDiagnostic(yStart, len(sc.C.Targets), "batch-api")
+		log.Println("+++++++++++++++++")
+		log.Println(bm)
 	}
 
-	for _, resourceTag := range sc.C.ResourceTags {
-		metrics := []string{}
-		for _, metric := range resourceTag.Metrics {
-			metrics = append(metrics, metric.Name)
-		}
-		metricsStr := strings.Join(metrics, ",")
+	// REMOVE_COMMENT
+	// for _, resourceGroup := range sc.C.ResourceGroups {
+	// 	metrics := []string{}
+	// 	for _, metric := range resourceGroup.Metrics {
+	// 		metrics = append(metrics, metric.Name)
+	// 	}
+	// 	metricsStr := strings.Join(metrics, ",")
 
-		filteredResources, err := ac.filteredListByTag(resourceTag)
-		if err != nil {
-			log.Printf("Failed to get resources for tag name %s, tag value %s: %v",
-				resourceTag.ResourceTagName, resourceTag.ResourceTagValue, err)
-			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
-			return
-		}
+	// 	filteredResources, err := ac.filteredListFromResourceGroup(resourceGroup)
+	// 	if err != nil {
+	// 		log.Printf("Failed to get resources for resource group %s and resource types %s: %v",
+	// 			resourceGroup.ResourceGroup, resourceGroup.ResourceTypes, err)
+	// 		ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
+	// 		return
+	// 	}
 
-		for _, resource := range filteredResources {
-			c.collectResource(ch, resource, metricsStr, resourceTag.Aggregations)
-		}
-	}
+	// 	for _, resource := range filteredResources {
+	// 		c.collectResource(ch, resource, metricsStr, resourceGroup.Aggregations)
+	// 	}
+	// }
+
+	// for _, resourceTag := range sc.C.ResourceTags {
+	// 	metrics := []string{}
+	// 	for _, metric := range resourceTag.Metrics {
+	// 		metrics = append(metrics, metric.Name)
+	// 	}
+	// 	metricsStr := strings.Join(metrics, ",")
+
+	// 	filteredResources, err := ac.filteredListByTag(resourceTag)
+	// 	if err != nil {
+	// 		log.Printf("Failed to get resources for tag name %s, tag value %s: %v",
+	// 			resourceTag.ResourceTagName, resourceTag.ResourceTagValue, err)
+	// 		ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
+	// 		return
+	// 	}
+
+	// 	for _, resource := range filteredResources {
+	// 		c.collectResource(ch, resource, metricsStr, resourceTag.Aggregations)
+	// 	}
+	// }
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
