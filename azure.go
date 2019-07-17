@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -63,6 +62,13 @@ type AzureMetricValueResponse struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	} `json:"error"`
+}
+
+type AzureBatchRequestResponse struct {
+	Responses []struct {
+		HttpStatusCode int                      `json:"httpStatusCode"`
+		Content        AzureMetricValueResponse `json:"content"`
+	} `json:"responses"`
 }
 
 type AzureResourceListResponse struct {
@@ -420,76 +426,84 @@ func (ac *AzureClient) refreshAccessToken() error {
 	return nil
 }
 
-type batchRequest struct {
-	Requests []batchURL `json:"requests"`
+type batchBody struct {
+	Requests []batchRequest `json:"requests"`
 }
-type batchURL struct {
+
+type batchRequest struct {
 	RelativeURL string `json:"relativeUrl"`
 	Method      string `json:"httpMethod"`
 }
 
-func (ac *AzureClient) doBlackMagic(resources []string) (string, error) {
-	const apiVersion = "2018-01-01"
-	apiURL := "https://management.azure.com/batch?api-version=2017-03-01"
-	log.Println("===========")
-	log.Println(resources)
+func metricURLFrom(resource string, metricNames string, aggregations []string) string {
+	apiVersion := "2018-01-01"
 
-	batch := batchRequest{make([]batchURL, len(resources))}
-	for i, r := range resources {
-		metricNames := "Percentage CPU"
-		u := fmt.Sprintf(
-			"/subscriptions/%s%s/providers/microsoft.insights/metrics",
-			sc.C.Credentials.SubscriptionID,
-			r)
-		endTime, startTime := GetTimes()
+	path := fmt.Sprintf(
+		"/subscriptions/%s%s/providers/microsoft.insights/metrics",
+		sc.C.Credentials.SubscriptionID,
+		resource,
+	)
 
-		values := url.Values{}
-		if metricNames != "" {
-			values.Add("metricnames", metricNames)
-		}
+	endTime, startTime := GetTimes()
+
+	values := url.Values{}
+	if metricNames != "" {
+		values.Add("metricnames", metricNames)
+	}
+	if len(aggregations) > 0 {
+		values.Add("aggregation", strings.Join(aggregations, ","))
+	} else {
 		values.Add("aggregation", "Total,Average,Minimum,Maximum")
-		values.Add("timespan", fmt.Sprintf("%s/%s", startTime, endTime))
-		values.Add("api-version", apiVersion)
+	}
+	values.Add("timespan", fmt.Sprintf("%s/%s", startTime, endTime))
+	values.Add("api-version", apiVersion)
 
-		url := url.URL{
-			Path:     u,
-			RawQuery: values.Encode(),
-		}
+	url := url.URL{
+		Path:     path,
+		RawQuery: values.Encode(),
+	}
+	return url.String()
+}
 
-		batch.Requests[i] = batchURL{url.String(), "GET"}
+func (ac *AzureClient) getBatchMetricValues(urls []string) (AzureBatchRequestResponse, error) {
+	apiURL := "https://management.azure.com/batch?api-version=2017-03-01"
+
+	batch := batchBody{}
+	for _, u := range urls {
+		batch.Requests = append(batch.Requests, batchRequest{
+			RelativeURL: u,
+			Method:      "GET",
+		})
 	}
 
-	var reqBody bytes.Buffer
-	enc := json.NewEncoder(&reqBody)
-	enc.SetEscapeHTML(false) // Azure does not handle the &:s becoming \u0026 in the urls
-	err := enc.Encode(batch)
+	batchJSON, err := json.Marshal(batch)
 	if err != nil {
-		return "", err
+		return AzureBatchRequestResponse{}, err
 	}
 
-	req, err := http.NewRequest("POST", apiURL, &reqBody)
+	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(batchJSON))
 	if err != nil {
-		return "", fmt.Errorf("Error creating HTTP request: %v", err)
+		return AzureBatchRequestResponse{}, fmt.Errorf("Error creating HTTP request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
 
 	resp, err := ac.client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("Error: %v", err)
+		return AzureBatchRequestResponse{}, fmt.Errorf("Error: %v", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return AzureBatchRequestResponse{}, err
 	}
 
-	var result map[string]interface{}
-	err = json.Unmarshal(body, &result)
+	var data AzureBatchRequestResponse
+	err = json.Unmarshal(body, &data)
 	if err != nil {
-		return "", fmt.Errorf("Error unmarshalling response body: %v", err)
+		return AzureBatchRequestResponse{}, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
 
-	return fmt.Sprintf("%v", result), nil
+	return data, nil
 }
