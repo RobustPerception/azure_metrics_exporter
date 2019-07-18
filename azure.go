@@ -435,7 +435,7 @@ type batchRequest struct {
 	Method      string `json:"httpMethod"`
 }
 
-func metricURLFrom(resource string, metricNames string, aggregations []string) string {
+func resourceURLFrom(resource string, metricNames string, aggregations []string) string {
 	apiVersion := "2018-01-01"
 
 	path := fmt.Sprintf(
