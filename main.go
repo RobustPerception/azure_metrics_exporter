@@ -40,19 +40,24 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- prometheus.NewDesc("dummy", "dummy", nil, nil)
 }
 
-func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string, metricsStr string, aggregations []string) {
-	metricValueData, err := ac.getMetricValue(resource, metricsStr, aggregations)
-	if err != nil {
-		log.Printf("Failed to get metrics for target %s: %v", resource, err)
+type resourceMeta struct {
+	resourceURL  string
+	metrics      string
+	aggregations []string
+}
+
+func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, resource resourceMeta, httpStatusCode int, metricValueData AzureMetricValueResponse) {
+	if httpStatusCode != 200 {
+		log.Printf("Received %d status for resource %s. %s", httpStatusCode, resource.resourceURL, metricValueData.APIError.Message)
 		return
 	}
 
 	if len(metricValueData.Value) == 0 || len(metricValueData.Value[0].Timeseries) == 0 {
-		log.Printf("Metric %v not found at target %v\n", metricsStr, resource)
+		log.Printf("Metric %v not found at target %v\n", resource.metrics, resource.resourceURL)
 		return
 	}
 	if len(metricValueData.Value[0].Timeseries[0].Data) == 0 {
-		log.Printf("No metric data returned for metric %v at target %v\n", metricsStr, resource)
+		log.Printf("No metric data returned for metric %v at target %v\n", resource.metrics, resource.resourceURL)
 		return
 	}
 
@@ -65,7 +70,7 @@ func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string
 		metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
 		labels := CreateResourceLabels(value.ID)
 
-		if hasAggregation(aggregations, "Total") {
+		if hasAggregation(resource.aggregations, "Total") {
 			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
 				prometheus.GaugeValue,
@@ -73,7 +78,7 @@ func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string
 			)
 		}
 
-		if hasAggregation(aggregations, "Average") {
+		if hasAggregation(resource.aggregations, "Average") {
 			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc(metricName+"_average", metricName+"_average", nil, labels),
 				prometheus.GaugeValue,
@@ -81,7 +86,7 @@ func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string
 			)
 		}
 
-		if hasAggregation(aggregations, "Minimum") {
+		if hasAggregation(resource.aggregations, "Minimum") {
 			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc(metricName+"_min", metricName+"_min", nil, labels),
 				prometheus.GaugeValue,
@@ -89,7 +94,7 @@ func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string
 			)
 		}
 
-		if hasAggregation(aggregations, "Maximum") {
+		if hasAggregation(resource.aggregations, "Maximum") {
 			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc(metricName+"_max", metricName+"_max", nil, labels),
 				prometheus.GaugeValue,
@@ -99,93 +104,33 @@ func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string
 	}
 }
 
-func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, batchData AzureBatchRequestResponse) {
-	for i, r := range batchData.Responses {
-		target := sc.C.Targets[i]
-
-		metrics := []string{}
-		for _, metric := range target.Metrics {
-			metrics = append(metrics, metric.Name)
-		}
-		metricsStr := strings.Join(metrics, ",")
-
-		if r.HttpStatusCode != 200 {
-			log.Printf("Received %d status for resource %s. %s", r.HttpStatusCode, target.Resource, r.Content.APIError.Message)
-			continue
-		}
-
-		if len(r.Content.Value) == 0 || len(r.Content.Value[0].Timeseries) == 0 {
-			log.Printf("Metric %v not found at target %v\n", metricsStr, target.Resource)
-			return
-		}
-		if len(r.Content.Value[0].Timeseries[0].Data) == 0 {
-			log.Printf("No metric data returned for metric %v at target %v\n", metricsStr, target.Resource)
-			return
-		}
-
-		for _, value := range r.Content.Value {
-			// Ensure Azure metric names conform to Prometheus metric name conventions
-			metricName := strings.Replace(value.Name.Value, " ", "_", -1)
-			metricName = strings.ToLower(metricName + "_" + value.Unit)
-			metricName = strings.Replace(metricName, "/", "_per_", -1)
-			metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
-			metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
-			labels := CreateResourceLabels(value.ID)
-
-			if hasAggregation(target.Aggregations, "Total") {
-				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
-					prometheus.GaugeValue,
-					metricValue.Total,
-				)
-			}
-
-			if hasAggregation(target.Aggregations, "Average") {
-				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_average", metricName+"_average", nil, labels),
-					prometheus.GaugeValue,
-					metricValue.Average,
-				)
-			}
-
-			if hasAggregation(target.Aggregations, "Minimum") {
-				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_min", metricName+"_min", nil, labels),
-					prometheus.GaugeValue,
-					metricValue.Minimum,
-				)
-			}
-
-			if hasAggregation(target.Aggregations, "Maximum") {
-				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_max", metricName+"_max", nil, labels),
-					prometheus.GaugeValue,
-					metricValue.Maximum,
-				)
-			}
-		}
-	}
-}
-
-type resourceMeta struct {
-	resourceURL  string
-	metrics      string
-	aggregations []string
-}
-
 func (c *Collector) batchCollectResources(ch chan<- prometheus.Metric, resources []resourceMeta) {
-	urls := []string{}
-	for _, r := range resources {
-		urls = append(urls, r.resourceURL)
-	}
+	const batchSize = 20
 
-	batchData, err := ac.getBatchMetricValues(urls)
-	if err != nil {
-		ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
-		return
+	// organize resources based on batchSize
+	var resourceBatch [][]resourceMeta
+	for batchSize < len(resources) {
+		resources, resourceBatch = resources[batchSize:], append(resourceBatch, resources[0:batchSize])
 	}
+	resourceBatch = append(resourceBatch, resources) // don't forget to add remainder resources
 
-	c.extractMetrics(ch, batchData)
+	// collect metrics per batch
+	for _, batch := range resourceBatch {
+		urls := []string{}
+		for _, r := range batch {
+			urls = append(urls, r.resourceURL)
+		}
+
+		batchData, err := ac.getBatchMetricValues(urls)
+		if err != nil {
+			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
+			return
+		}
+
+		for i, resp := range batchData.Responses {
+			c.extractMetrics(ch, resources[i], resp.HttpStatusCode, resp.Content)
+		}
+	}
 }
 
 // Collect - collect results from Azure Montior API and create Prometheus metrics.
@@ -196,6 +141,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
 		return
 	}
+
 	var resources []resourceMeta
 	for _, target := range sc.C.Targets {
 		var resource resourceMeta
@@ -331,5 +277,4 @@ func main() {
 		log.Fatalf("Error starting HTTP server: %v", err)
 		os.Exit(1)
 	}
-
 }
