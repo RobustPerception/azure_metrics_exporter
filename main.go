@@ -26,6 +26,7 @@ var (
 	listMetricDefinitions = kingpin.Flag("list.definitions", "List available metric definitions for the given resources and exit.").Bool()
 	invalidMetricChars    = regexp.MustCompile("[^a-zA-Z0-9_:]")
 	azureErrorDesc        = prometheus.NewDesc("azure_error", "Error collecting metrics", nil, nil)
+	batchSize             = 20
 )
 
 func init() {
@@ -105,8 +106,6 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, resource resourc
 }
 
 func (c *Collector) batchCollectResources(ch chan<- prometheus.Metric, resources []resourceMeta) {
-	const batchSize = 20
-
 	// organize resources based on batchSize
 	var resourceBatch [][]resourceMeta
 	for batchSize < len(resources) {
