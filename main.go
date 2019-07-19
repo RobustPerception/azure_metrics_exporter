@@ -115,7 +115,7 @@ func (c *Collector) batchCollectResources(ch chan<- prometheus.Metric, resources
 
 	// collect metrics per batch
 	for _, batch := range resourceBatch {
-		urls := []string{}
+		var urls []string
 		for _, r := range batch {
 			urls = append(urls, r.resourceURL)
 		}
