@@ -26,6 +26,7 @@ var (
 	listMetricDefinitions = kingpin.Flag("list.definitions", "List available metric definitions for the given resources and exit.").Bool()
 	invalidMetricChars    = regexp.MustCompile("[^a-zA-Z0-9_:]")
 	azureErrorDesc        = prometheus.NewDesc("azure_error", "Error collecting metrics", nil, nil)
+	batchSize             = 20
 )
 
 func init() {
@@ -40,19 +41,24 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- prometheus.NewDesc("dummy", "dummy", nil, nil)
 }
 
-func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string, metricsStr string, aggregations []string) {
-	metricValueData, err := ac.getMetricValue(resource, metricsStr, aggregations)
-	if err != nil {
-		log.Printf("Failed to get metrics for target %s: %v", resource, err)
+type resourceMeta struct {
+	resourceURL  string
+	metrics      string
+	aggregations []string
+}
+
+func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, resource resourceMeta, httpStatusCode int, metricValueData AzureMetricValueResponse) {
+	if httpStatusCode != 200 {
+		log.Printf("Received %d status for resource %s. %s", httpStatusCode, resource.resourceURL, metricValueData.APIError.Message)
 		return
 	}
 
 	if len(metricValueData.Value) == 0 || len(metricValueData.Value[0].Timeseries) == 0 {
-		log.Printf("Metric %v not found at target %v\n", metricsStr, resource)
+		log.Printf("Metric %v not found at target %v\n", resource.metrics, resource.resourceURL)
 		return
 	}
 	if len(metricValueData.Value[0].Timeseries[0].Data) == 0 {
-		log.Printf("No metric data returned for metric %v at target %v\n", metricsStr, resource)
+		log.Printf("No metric data returned for metric %v at target %v\n", resource.metrics, resource.resourceURL)
 		return
 	}
 
@@ -65,7 +71,7 @@ func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string
 		metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
 		labels := CreateResourceLabels(value.ID)
 
-		if hasAggregation(aggregations, "Total") {
+		if hasAggregation(resource.aggregations, "Total") {
 			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
 				prometheus.GaugeValue,
@@ -73,7 +79,7 @@ func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string
 			)
 		}
 
-		if hasAggregation(aggregations, "Average") {
+		if hasAggregation(resource.aggregations, "Average") {
 			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc(metricName+"_average", metricName+"_average", nil, labels),
 				prometheus.GaugeValue,
@@ -81,7 +87,7 @@ func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string
 			)
 		}
 
-		if hasAggregation(aggregations, "Minimum") {
+		if hasAggregation(resource.aggregations, "Minimum") {
 			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc(metricName+"_min", metricName+"_min", nil, labels),
 				prometheus.GaugeValue,
@@ -89,7 +95,7 @@ func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string
 			)
 		}
 
-		if hasAggregation(aggregations, "Maximum") {
+		if hasAggregation(resource.aggregations, "Maximum") {
 			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc(metricName+"_max", metricName+"_max", nil, labels),
 				prometheus.GaugeValue,
@@ -99,23 +105,54 @@ func (c *Collector) collectResource(ch chan<- prometheus.Metric, resource string
 	}
 }
 
+func (c *Collector) batchCollectResources(ch chan<- prometheus.Metric, resources []resourceMeta) {
+	// collect metrics in batches
+	for i := 0; i < len(resources); i += batchSize {
+		j := i + batchSize
+
+		// don't forget to add remainder resources
+		if j > len(resources) {
+			j = len(resources)
+		}
+
+		var urls []string
+		for _, r := range resources[i:j] {
+			urls = append(urls, r.resourceURL)
+		}
+
+		batchData, err := ac.getBatchMetricValues(urls)
+		if err != nil {
+			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
+			return
+		}
+
+		for i, resp := range batchData.Responses {
+			c.extractMetrics(ch, resources[i], resp.HttpStatusCode, resp.Content)
+		}
+	}
+}
+
 // Collect - collect results from Azure Montior API and create Prometheus metrics.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
+
 	if err := ac.refreshAccessToken(); err != nil {
 		log.Println(err)
 		ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
 		return
 	}
 
-	// Get metric values for all defined metrics
+	var resources []resourceMeta
 	for _, target := range sc.C.Targets {
+		var resource resourceMeta
+
 		metrics := []string{}
 		for _, metric := range target.Metrics {
 			metrics = append(metrics, metric.Name)
 		}
-		metricsStr := strings.Join(metrics, ",")
-
-		c.collectResource(ch, target.Resource, metricsStr, target.Aggregations)
+		resource.metrics = strings.Join(metrics, ",")
+		resource.aggregations = filterAggregations(target.Aggregations)
+		resource.resourceURL = resourceURLFrom(target.Resource, resource.metrics, resource.aggregations)
+		resources = append(resources, resource)
 	}
 
 	for _, resourceGroup := range sc.C.ResourceGroups {
@@ -133,8 +170,12 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			return
 		}
 
-		for _, resource := range filteredResources {
-			c.collectResource(ch, resource, metricsStr, resourceGroup.Aggregations)
+		for _, f := range filteredResources {
+			var resource resourceMeta
+			resource.metrics = metricsStr
+			resource.aggregations = filterAggregations(resourceGroup.Aggregations)
+			resource.resourceURL = resourceURLFrom(f, resource.metrics, resource.aggregations)
+			resources = append(resources, resource)
 		}
 	}
 
@@ -153,10 +194,16 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			return
 		}
 
-		for _, resource := range filteredResources {
-			c.collectResource(ch, resource, metricsStr, resourceTag.Aggregations)
+		for _, f := range filteredResources {
+			var resource resourceMeta
+			resource.metrics = metricsStr
+			resource.aggregations = filterAggregations(resourceTag.Aggregations)
+			resource.resourceURL = resourceURLFrom(f, resource.metrics, resource.aggregations)
+			resources = append(resources, resource)
 		}
 	}
+
+	c.batchCollectResources(ch, resources)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -214,5 +261,4 @@ func main() {
 		log.Fatalf("Error starting HTTP server: %v", err)
 		os.Exit(1)
 	}
-
 }
