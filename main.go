@@ -106,17 +106,17 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, resource resourc
 }
 
 func (c *Collector) batchCollectResources(ch chan<- prometheus.Metric, resources []resourceMeta) {
-	// organize resources based on batchSize
-	var resourceBatch [][]resourceMeta
-	for batchSize < len(resources) {
-		resources, resourceBatch = resources[batchSize:], append(resourceBatch, resources[0:batchSize])
-	}
-	resourceBatch = append(resourceBatch, resources) // don't forget to add remainder resources
+	// collect metrics in batches
+	for i := 0; i < len(resources); i += batchSize {
+		j := i + batchSize
 
-	// collect metrics per batch
-	for _, batch := range resourceBatch {
+		// don't forget to add remainder resources
+		if j > len(resources) {
+			j = len(resources)
+		}
+
 		var urls []string
-		for _, r := range batch {
+		for _, r := range resources[i:j] {
 			urls = append(urls, r.resourceURL)
 		}
 
