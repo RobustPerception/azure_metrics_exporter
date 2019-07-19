@@ -150,12 +150,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			metrics = append(metrics, metric.Name)
 		}
 		resource.metrics = strings.Join(metrics, ",")
-
-		if len(target.Aggregations) > 0 {
-			resource.aggregations = target.Aggregations
-		} else {
-			resource.aggregations = []string{"Total", "Average", "Minimum", "Maximum"}
-		}
+		resource.aggregations = filterAggregations(target.Aggregations)
 		resource.resourceURL = resourceURLFrom(target.Resource, resource.metrics, resource.aggregations)
 		resources = append(resources, resource)
 	}
@@ -178,12 +173,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		for _, f := range filteredResources {
 			var resource resourceMeta
 			resource.metrics = metricsStr
-
-			if len(resourceGroup.Aggregations) > 0 {
-				resource.aggregations = resourceGroup.Aggregations
-			} else {
-				resource.aggregations = []string{"Total", "Average", "Minimum", "Maximum"}
-			}
+			resource.aggregations = filterAggregations(resourceGroup.Aggregations)
 			resource.resourceURL = resourceURLFrom(f, resource.metrics, resource.aggregations)
 			resources = append(resources, resource)
 		}
@@ -207,12 +197,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		for _, f := range filteredResources {
 			var resource resourceMeta
 			resource.metrics = metricsStr
-
-			if len(resourceTag.Aggregations) > 0 {
-				resource.aggregations = resourceTag.Aggregations
-			} else {
-				resource.aggregations = []string{"Total", "Average", "Minimum", "Maximum"}
-			}
+			resource.aggregations = filterAggregations(resourceTag.Aggregations)
 			resource.resourceURL = resourceURLFrom(f, resource.metrics, resource.aggregations)
 			resources = append(resources, resource)
 		}

@@ -215,11 +215,8 @@ func (ac *AzureClient) getMetricValue(resource string, metricNames string, aggre
 	if metricNames != "" {
 		values.Add("metricnames", metricNames)
 	}
-	if len(aggregations) > 0 {
-		values.Add("aggregation", strings.Join(aggregations, ","))
-	} else {
-		values.Add("aggregation", "Total,Average,Minimum,Maximum")
-	}
+	filtered := filterAggregations(aggregations)
+	values.Add("aggregation", strings.Join(filtered, ","))
 	values.Add("timespan", fmt.Sprintf("%s/%s", startTime, endTime))
 	values.Add("api-version", apiVersion)
 
@@ -450,11 +447,8 @@ func resourceURLFrom(resource string, metricNames string, aggregations []string)
 	if metricNames != "" {
 		values.Add("metricnames", metricNames)
 	}
-	if len(aggregations) > 0 {
-		values.Add("aggregation", strings.Join(aggregations, ","))
-	} else {
-		values.Add("aggregation", "Total,Average,Minimum,Maximum")
-	}
+	filtered := filterAggregations(aggregations)
+	values.Add("aggregation", strings.Join(filtered, ","))
 	values.Add("timespan", fmt.Sprintf("%s/%s", startTime, endTime))
 	values.Add("api-version", apiVersion)
 
