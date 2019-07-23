@@ -197,58 +197,6 @@ func (ac *AzureClient) getAzureMetricDefinitionResponse(resource string) (*Azure
 	return def, nil
 }
 
-func (ac *AzureClient) getMetricValue(resource string, metricNames string, aggregations []string) (AzureMetricValueResponse, error) {
-	apiVersion := "2018-01-01"
-
-	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, resource)
-	endTime, startTime := GetTimes()
-
-	metricValueEndpoint := fmt.Sprintf("%s/%s/providers/microsoft.insights/metrics", sc.C.ResourceManagerURL, metricsResource)
-
-	req, err := http.NewRequest("GET", metricValueEndpoint, nil)
-	if err != nil {
-		return AzureMetricValueResponse{}, fmt.Errorf("Error creating HTTP request: %v", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
-
-	values := url.Values{}
-	if metricNames != "" {
-		values.Add("metricnames", metricNames)
-	}
-	filtered := filterAggregations(aggregations)
-	values.Add("aggregation", strings.Join(filtered, ","))
-	values.Add("timespan", fmt.Sprintf("%s/%s", startTime, endTime))
-	values.Add("api-version", apiVersion)
-
-	req.URL.RawQuery = values.Encode()
-
-	resp, err := ac.client.Do(req)
-	if err != nil {
-		return AzureMetricValueResponse{}, fmt.Errorf("Error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return AzureMetricValueResponse{}, fmt.Errorf("Unable to query metrics API with status code: %d", resp.StatusCode)
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return AzureMetricValueResponse{}, fmt.Errorf("Error reading body of response: %v", err)
-	}
-
-	var data AzureMetricValueResponse
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		return AzureMetricValueResponse{}, fmt.Errorf("Error unmarshalling response body: %v", err)
-	}
-
-	if data.APIError.Code != "" {
-		return AzureMetricValueResponse{}, fmt.Errorf("Metrics API returned error: %s - %v", data.APIError.Code, data.APIError.Message)
-	}
-
-	return data, nil
-}
-
 // Returns resource list resolved and filtered from resource_groups configuration
 func (ac *AzureClient) filteredListFromResourceGroup(resourceGroup config.ResourceGroup) ([]string, error) {
 	resources, err := ac.listFromResourceGroup(resourceGroup.ResourceGroup, resourceGroup.ResourceTypes)
