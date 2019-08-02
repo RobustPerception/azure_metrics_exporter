@@ -126,8 +126,8 @@ func (c *Collector) batchCollectResources(ch chan<- prometheus.Metric, resources
 			return
 		}
 
-		for i, resp := range batchData.Responses {
-			c.extractMetrics(ch, resources[i], resp.HttpStatusCode, resp.Content)
+		for k, resp := range batchData.Responses {
+			c.extractMetrics(ch, resources[i+k], resp.HttpStatusCode, resp.Content)
 		}
 	}
 }
