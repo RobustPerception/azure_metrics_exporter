@@ -31,12 +31,12 @@ func GetTimes() (string, string) {
 // CreateResourceLabels - Returns resource labels for a give resource ID.
 func CreateResourceLabels(resourceID string) map[string]string {
 	labels := make(map[string]string)
-        resource := strings.Split(resourceID, "/")
-        labels["resource_group"] = resource[4]
-        labels["resource_name"] = resource[8]
-        if len(resource) > 13 {
-            labels["sub_resource_name"] = resource[10]
-        }
+	resource := strings.Split(resourceID, "/")
+	labels["resource_group"] = resource[4]
+	labels["resource_name"] = resource[8]
+	if len(resource) > 13 {
+		labels["sub_resource_name"] = resource[10]
+	}
 
 	return labels
 }
@@ -52,4 +52,12 @@ func hasAggregation(aggregations []string, aggregation string) bool {
 		}
 	}
 	return false
+}
+
+func filterAggregations(aggregations []string) []string {
+	base := []string{"Total", "Average", "Minimum", "Maximum"}
+	if len(aggregations) > 0 {
+		return aggregations
+	}
+	return base
 }
