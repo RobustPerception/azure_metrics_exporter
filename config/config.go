@@ -7,17 +7,17 @@ import (
 	"strings"
 	"sync"
 
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 // Config - Azure exporter configuration
 type Config struct {
-	ActiveDirectoryAuthorityURL      string          `yaml:"active_directory_authority_url"`
-	ResourceManagerURL               string          `yaml:"resource_manager_url"`
-	Credentials    Credentials     `yaml:"credentials"`
-	Targets        []Target        `yaml:"targets"`
-	ResourceGroups []ResourceGroup `yaml:"resource_groups"`
-	ResourceTags   []ResourceTag   `yaml:"resource_tags"`
+	ActiveDirectoryAuthorityURL string          `yaml:"active_directory_authority_url"`
+	ResourceManagerURL          string          `yaml:"resource_manager_url"`
+	Credentials                 Credentials     `yaml:"credentials"`
+	Targets                     []Target        `yaml:"targets"`
+	ResourceGroups              []ResourceGroup `yaml:"resource_groups"`
+	ResourceTags                []ResourceTag   `yaml:"resource_tags"`
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline"`
@@ -33,7 +33,7 @@ type SafeConfig struct {
 func (sc *SafeConfig) ReloadConfig(confFile string) (err error) {
 	var c = &Config{
 		ActiveDirectoryAuthorityURL: "https://login.microsoftonline.com/",
-		ResourceManagerURL: "https://management.azure.com/",
+		ResourceManagerURL:          "https://management.azure.com/",
 	}
 
 	yamlFile, err := ioutil.ReadFile(confFile)
@@ -150,6 +150,7 @@ type ResourceGroup struct {
 type ResourceTag struct {
 	ResourceTagName  string   `yaml:"resource_tag_name"`
 	ResourceTagValue string   `yaml:"resource_tag_value"`
+	ResourceTypes    []string `yaml:"resource_types"`
 	Metrics          []Metric `yaml:"metrics"`
 	Aggregations     []string `yaml:"aggregations"`
 

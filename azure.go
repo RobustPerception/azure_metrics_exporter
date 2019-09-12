@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -209,7 +210,7 @@ func (ac *AzureClient) filteredListFromResourceGroup(resourceGroup config.Resour
 
 // Returns resource list filtered by tag name and tag value
 func (ac *AzureClient) filteredListByTag(resourceTag config.ResourceTag) ([]string, error) {
-	resources, err := ac.listByTag(resourceTag.ResourceTagName, resourceTag.ResourceTagValue)
+	resources, err := ac.listByTag(resourceTag.ResourceTagName, resourceTag.ResourceTagValue, resourceTag.ResourceTypes)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +249,8 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 }
 
 // Returns all resource with the given couple tagname, tagvalue
-func (ac *AzureClient) listByTag(tagName string, tagValue string) ([]string, error) {
+func (ac *AzureClient) listByTag(tagName string, tagValue string, types []string) ([]string, error) {
+	log.Println("Types ", types)
 	apiVersion := "2018-05-01"
 	securedTagName := secureString(tagName)
 	securedTagValue := secureString(tagValue)
@@ -269,7 +271,25 @@ func (ac *AzureClient) listByTag(tagName string, tagValue string) ([]string, err
 	if err != nil {
 		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
-
+	if len(types) > 0 {
+		typesMap := make(map[string]interface{})
+		for _, resourceType := range types {
+			typesMap[resourceType] = nil
+		}
+		var filteredResources []struct {
+			Id        string `json:"id"`
+			Name      string `json:"name"`
+			Type      string `json:"type"`
+			ManagedBy string `json:"managedBy"`
+			Location  string `json:"location"`
+		}
+		for _, resource := range data.Value {
+			if _, typeExist := typesMap[resource.Type]; typeExist {
+				filteredResources = append(filteredResources, resource)
+			}
+		}
+		data.Value = filteredResources
+	}
 	resources := extractResourceNames(data, subscription)
 
 	return resources, nil
@@ -286,7 +306,7 @@ func getAzureMonitorResponse(azureManagementEndpoint string) ([]byte, error) {
 		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
-
+	log.Printf("Request:%s", req.URL.String())
 	resp, err := ac.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("Error: %v", err)
