@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -250,7 +249,6 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 
 // Returns all resource with the given couple tagname, tagvalue
 func (ac *AzureClient) listByTag(tagName string, tagValue string, types []string) ([]string, error) {
-	log.Println("Types ", types)
 	apiVersion := "2018-05-01"
 	securedTagName := secureString(tagName)
 	securedTagValue := secureString(tagValue)
@@ -306,7 +304,6 @@ func getAzureMonitorResponse(azureManagementEndpoint string) ([]byte, error) {
 		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
-	log.Printf("Request:%s", req.URL.String())
 	resp, err := ac.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("Error: %v", err)
