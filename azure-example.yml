@@ -32,6 +32,6 @@ resource_tags:
   - resource_tag_name: "monitoring"
     resource_tag_value: "enabled"
     resource_types:
-      - "Microsoft.Compute/storage"
+      - "Microsoft.Compute/virtualMachines"
     metrics:
       - name: "CPU Credits consumed"
