@@ -129,7 +129,7 @@ Name of the tag to be filtered against.
 `resource_tag_value`:
 Value of the tag to be filtered against.
 
-`resource_types`: optional list of types kept in the list of resources gathered by tag. If none are specified, then all the resources are kept, and configured metric names must exist for every tagged resource.
+`resource_types`: optional list of types kept in the list of resources gathered by tag. If none are specified, then all the resources are kept. All the metrics defined must exist for each processed resource.
 
 ## Prometheus configuration
 
