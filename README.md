@@ -96,7 +96,7 @@ resource_tags:
     resource_types:
     - "Microsoft.Compute/virtualMachines"
     metrics:
-     - name: "CPU Credits Consumed"
+    - name: "CPU Credits Consumed"
 
 ```
 
@@ -129,7 +129,7 @@ Name of the tag to be filtered against.
 `resource_tag_value`:
 Value of the tag to be filtered against.
 
-`resource_types`: optional list of types kept in the list of resources gathered by tag. If the list is empty or the parameter is not defined, then all the resources are kept, and configured metric names must exist for every tagged resource.
+`resource_types`: optional list of types kept in the list of resources gathered by tag. If none are specified, then all the resources are kept, and configured metric names must exist for every tagged resource.
 
 ## Prometheus configuration
 
