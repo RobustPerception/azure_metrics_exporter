@@ -270,9 +270,9 @@ func (ac *AzureClient) listByTag(tagName string, tagValue string, types []string
 		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
 	if len(types) > 0 {
-		typesMap := make(map[string]interface{})
+		typesMap := make(map[string]struct{})
 		for _, resourceType := range types {
-			typesMap[resourceType] = nil
+			typesMap[resourceType] = struct{}{}
 		}
 		var filteredResources []struct {
 			Id        string `json:"id"`
