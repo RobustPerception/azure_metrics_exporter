@@ -70,15 +70,17 @@ type AzureBatchRequestResponse struct {
 		Content        AzureMetricValueResponse `json:"content"`
 	} `json:"responses"`
 }
-
 type AzureResourceListResponse struct {
-	Value []struct {
-		Id        string `json:"id"`
-		Name      string `json:"name"`
-		Type      string `json:"type"`
-		ManagedBy string `json:"managedBy"`
-		Location  string `json:"location"`
-	} `json:"value"`
+	Value []AzureResource `json:"value"`
+}
+
+type AzureResource struct {
+	Id        string            `json:"id"`
+	Name      string            `json:"name"`
+	Type      string            `json:"type"`
+	ManagedBy string            `json:"managedBy"`
+	Location  string            `json:"location"`
+	Subscription string
 }
 
 // AzureClient represents our client to talk to the Azure api
@@ -270,27 +272,25 @@ func (ac *AzureClient) listByTag(tagName string, tagValue string, types []string
 		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
 	if len(types) > 0 {
-		typesMap := make(map[string]struct{})
-		for _, resourceType := range types {
-			typesMap[resourceType] = struct{}{}
-		}
-		var filteredResources []struct {
-			Id        string `json:"id"`
-			Name      string `json:"name"`
-			Type      string `json:"type"`
-			ManagedBy string `json:"managedBy"`
-			Location  string `json:"location"`
-		}
-		for _, resource := range data.Value {
-			if _, typeExist := typesMap[resource.Type]; typeExist {
-				filteredResources = append(filteredResources, resource)
-			}
-		}
-		data.Value = filteredResources
+		filterTypesInResourceList(types, data)
 	}
 	resources := extractResourceNames(data, subscription)
 
 	return resources, nil
+}
+
+func filterTypesInResourceList(types []string, data AzureResourceListResponse) {
+	typesMap := make(map[string]struct{})
+	for _, resourceType := range types {
+		typesMap[resourceType] = struct{}{}
+	}
+	var filteredResources []AzureResource
+	for _, resource := range data.Value {
+		if _, typeExist := typesMap[resource.Type]; typeExist {
+			filteredResources = append(filteredResources, resource)
+		}
+	}
+	data.Value = filteredResources
 }
 
 func secureString(value string) string {
