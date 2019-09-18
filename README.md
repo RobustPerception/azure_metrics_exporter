@@ -94,9 +94,9 @@ resource_tags:
   - resource_tag_name: "group"
     resource_tag_value: "tomonitor"
     resource_types:
-    - "Microsoft.Compute/virtualMachines"
+      - "Microsoft.Compute/virtualMachines"
     metrics:
-    - name: "CPU Credits Consumed"
+      - name: "CPU Credits Consumed"
 
 ```
 
