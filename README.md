@@ -93,8 +93,10 @@ resource_groups:
 resource_tags:
   - resource_tag_name: "group"
     resource_tag_value: "tomonitor"
+    resource_types:
+      - "Microsoft.Compute/virtualMachines"
     metrics:
-    - name: "CPU Credits Consumed"
+      - name: "CPU Credits Consumed"
 
 ```
 
@@ -126,6 +128,8 @@ Name of the tag to be filtered against.
 
 `resource_tag_value`:
 Value of the tag to be filtered against.
+
+`resource_types`: optional list of types kept in the list of resources gathered by tag. If none are specified, then all the resources are kept. All defined metrics must exist for each processed resource.
 
 ## Prometheus configuration
 
