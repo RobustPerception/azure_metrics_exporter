@@ -272,20 +272,20 @@ func (ac *AzureClient) listByTag(tagName string, tagValue string, types []string
 		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
 	if len(types) > 0 {
-		data.Value = filterTypesInResourceList(types, data)
+		data.Value = data.filterTypesInResourceList(types)
 	}
 	resources := extractResourceNames(data, subscription)
 
 	return resources, nil
 }
 
-func filterTypesInResourceList(types []string, data AzureResourceListResponse) []AzureResource {
+func (response *AzureResourceListResponse) filterTypesInResourceList(types []string) []AzureResource {
 	typesMap := make(map[string]struct{})
 	for _, resourceType := range types {
 		typesMap[resourceType] = struct{}{}
 	}
 	var filteredResources []AzureResource
-	for _, resource := range data.Value {
+	for _, resource := range response.Value {
 		if _, typeExist := typesMap[resource.Type]; typeExist {
 			filteredResources = append(filteredResources, resource)
 		}
