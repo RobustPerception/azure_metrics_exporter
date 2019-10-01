@@ -51,7 +51,7 @@ type resourceMeta struct {
 	resource     AzureResource
 }
 
-func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta, httpStatusCode int, metricValueData AzureMetricValueResponse, publishedResource map[string]bool) {
+func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta, httpStatusCode int, metricValueData AzureMetricValueResponse, publishedResources map[string]bool) {
 	if httpStatusCode != 200 {
 		log.Printf("Received %d status for resource %s. %s", httpStatusCode, rm.resourceURL, metricValueData.APIError.Message)
 		return
@@ -108,18 +108,20 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 		}
 	}
 
-	if _, ok := publishedResource[rm.resource.ID]; !ok {
+	if _, ok := publishedResources[rm.resource.ID]; !ok {
 		infoLabels := CreateAllResourceLabelsFrom(rm)
 		ch <- prometheus.MustNewConstMetric(
 			prometheus.NewDesc("azure_resource_info", "Azure information available for resource", nil, infoLabels),
 			prometheus.GaugeValue,
 			1,
 		)
-		publishedResource[rm.resource.ID] = true
+		publishedResources[rm.resource.ID] = true
 	}
 }
 
-func (c *Collector) batchCollectMetrics(ch chan<- prometheus.Metric, resources []resourceMeta, publishedResource map[string]bool) {
+func (c *Collector) batchCollectMetrics(ch chan<- prometheus.Metric, resources []resourceMeta) {
+	var publishedResources = map[string]bool{}
+
 	// collect metrics in batches
 	for i := 0; i < len(resources); i += batchSize {
 		j := i + batchSize
@@ -148,7 +150,7 @@ func (c *Collector) batchCollectMetrics(ch chan<- prometheus.Metric, resources [
 		}
 
 		for k, resp := range batchData.Responses {
-			c.extractMetrics(ch, resources[i+k], resp.HttpStatusCode, resp.Content, publishedResource)
+			c.extractMetrics(ch, resources[i+k], resp.HttpStatusCode, resp.Content, publishedResources)
 		}
 	}
 }
@@ -209,7 +211,6 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	var publishedResource = map[string]bool{}
 	var resources []resourceMeta
 	var incompleteResources []resourceMeta
 
@@ -287,7 +288,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	resources = append(resources, completeResources...)
-	c.batchCollectMetrics(ch, resources, publishedResource)
+	c.batchCollectMetrics(ch, resources)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
