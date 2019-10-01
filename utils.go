@@ -57,6 +57,11 @@ func CreateAllResourceLabelsFrom(rm resourceMeta) map[string]string {
 	formatTag := "pretty"
 	labels := make(map[string]string)
 	split := strings.Split(rm.resourceURL, "/")
+
+	// Most labels are handled by iterating over the fields of resourceMeta.AzureResource.
+	// Their tag values are used as label keys. The only label value that is created here
+	// is "resource_group", as the current implementation of resourceMeta doesn't
+	// store this information.
 	labels["resource_group"] = split[resourceGroupPosition]
 
 	for k, v := range rm.resource.Tags {

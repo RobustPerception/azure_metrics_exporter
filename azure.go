@@ -72,10 +72,17 @@ type AzureMetricValueResponse struct {
 	} `json:"error"`
 }
 
-type AzureBatchRequestResponse struct {
+type AzureBatchMetricResponse struct {
 	Responses []struct {
 		HttpStatusCode int                      `json:"httpStatusCode"`
 		Content        AzureMetricValueResponse `json:"content"`
+	} `json:"responses"`
+}
+
+type AzureBatchLookupResponse struct {
+	Responses []struct {
+		HttpStatusCode int           `json:"httpStatusCode"`
+		Content        AzureResource `json:"content"`
 	} `json:"responses"`
 }
 
@@ -363,36 +370,6 @@ func (ac *AzureClient) listAPIVersions() error {
 	return nil
 }
 
-func (ac *AzureClient) lookupResourceByID(resourceID string) (AzureResource, error) {
-	resourceType := targetResourceType.FindString(resourceID)
-	if resourceType == "" {
-		return AzureResource{}, fmt.Errorf("No type found for resource: %s", resourceID)
-	}
-
-	apiVersion := ac.APIVersions.findBy(resourceType)
-	if apiVersion == "" {
-		return AzureResource{}, fmt.Errorf("No api version found for type: %s", resourceType)
-	}
-
-	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
-	resourcesEndpoint := fmt.Sprintf("%s/%s/%s?api-version=%s", sc.C.ResourceManagerURL, subscription, resourceID, apiVersion)
-
-	body, err := getAzureMonitorResponse(resourcesEndpoint)
-	if err != nil {
-		return AzureResource{}, err
-	}
-
-	var resource AzureResource
-	err = json.Unmarshal(body, &resource)
-	if err != nil {
-		return AzureResource{}, fmt.Errorf("Error unmarshalling response body: %v", err)
-	}
-
-	resource.Subscription = sc.C.Credentials.SubscriptionID
-
-	return resource, nil
-}
-
 func (response *AzureResourceListResponse) filterTypesInResourceList(types []string) []AzureResource {
 	typesMap := make(map[string]struct{})
 	for _, resourceType := range types {
@@ -529,7 +506,7 @@ func resourceURLFrom(resource string, metricNames string, aggregations []string)
 	return url.String()
 }
 
-func (ac *AzureClient) getBatchMetricValues(urls []string) (AzureBatchRequestResponse, error) {
+func (ac *AzureClient) getBatchResponseBody(urls []string) ([]byte, error) {
 	apiURL := "https://management.azure.com/batch?api-version=2017-03-01"
 
 	batch := batchBody{}
@@ -542,32 +519,25 @@ func (ac *AzureClient) getBatchMetricValues(urls []string) (AzureBatchRequestRes
 
 	batchJSON, err := json.Marshal(batch)
 	if err != nil {
-		return AzureBatchRequestResponse{}, err
+		return nil, err
 	}
 
 	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(batchJSON))
 	if err != nil {
-		return AzureBatchRequestResponse{}, fmt.Errorf("Error creating HTTP request: %v", err)
+		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
 
 	resp, err := ac.client.Do(req)
 	if err != nil {
-		return AzureBatchRequestResponse{}, fmt.Errorf("Error: %v", err)
+		return nil, fmt.Errorf("Error: %v", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return AzureBatchRequestResponse{}, err
+		return nil, err
 	}
-
-	var data AzureBatchRequestResponse
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		return AzureBatchRequestResponse{}, fmt.Errorf("Error unmarshalling response body: %v", err)
-	}
-
-	return data, nil
+	return body, nil
 }
