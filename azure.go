@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -14,10 +16,16 @@ import (
 	"github.com/RobustPerception/azure_metrics_exporter/config"
 )
 
+var (
+	apiVersionDate     = regexp.MustCompile("^\\d{4}-\\d{2}-\\d{2}")
+	targetResourceType = regexp.MustCompile("[mM]icrosoft\\.[a-zA-Z]+(\\/[a-zA-Z]+)")
+)
+
 // AzureMetricDefinitionResponse represents metric definition response for a given resource from Azure.
 type AzureMetricDefinitionResponse struct {
 	MetricDefinitionResponses []metricDefinitionResponse `json:"value"`
 }
+
 type metricDefinitionResponse struct {
 	Dimensions []struct {
 		LocalizedValue string `json:"localizedValue"`
@@ -64,23 +72,97 @@ type AzureMetricValueResponse struct {
 	} `json:"error"`
 }
 
-type AzureBatchRequestResponse struct {
+type AzureBatchMetricResponse struct {
 	Responses []struct {
 		HttpStatusCode int                      `json:"httpStatusCode"`
 		Content        AzureMetricValueResponse `json:"content"`
 	} `json:"responses"`
 }
+
+type AzureBatchLookupResponse struct {
+	Responses []struct {
+		HttpStatusCode int           `json:"httpStatusCode"`
+		Content        AzureResource `json:"content"`
+	} `json:"responses"`
+}
+
 type AzureResourceListResponse struct {
 	Value []AzureResource `json:"value"`
 }
 
 type AzureResource struct {
-	Id        string            `json:"id"`
-	Name      string            `json:"name"`
-	Type      string            `json:"type"`
-	ManagedBy string            `json:"managedBy"`
-	Location  string            `json:"location"`
-	Subscription string
+	ID           string            `json:"id" pretty:"id"`
+	Name         string            `json:"name" pretty:"resource_name"`
+	Location     string            `json:"location" pretty:"azure_location"`
+	Type         string            `json:"type" pretty:"resource_type"`
+	Tags         map[string]string `json:"tags" pretty:"tags"`
+	ManagedBy    string            `json:"managedBy" pretty:"managed_by"`
+	Subscription string            `pretty:"azure_subscription"`
+}
+
+type APIVersionResponse struct {
+	Value []struct {
+		ID            string `json:"id"`
+		Namespace     string `json:"namespace"`
+		ResourceTypes []struct {
+			ResourceType string   `json:"resourceType"`
+			Locations    []string `json:"locations"`
+			APIVersions  []string `json:"apiVersions"`
+		} `json:"resourceTypes"`
+		RegistrationState string `json:"registrationState"`
+	} `json:"value"`
+}
+
+type APIVersionData struct {
+	Endpoint string
+	Date     time.Time
+}
+
+type APIVersionMap map[string]string
+
+func latestVersionFrom(apiList []string) string {
+	var latest = &APIVersionData{}
+	format := "2006-01-02"
+
+	for _, api := range apiList {
+		dateStr := apiVersionDate.FindString(api)
+		date, err := time.Parse(format, dateStr)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		if latest == nil || latest.Date.Before(date) {
+			latest = &APIVersionData{Endpoint: api, Date: date}
+		}
+
+	}
+	return latest.Endpoint
+}
+
+func (r *APIVersionResponse) extractAPIVersions() APIVersionMap {
+	var apiVersions = APIVersionMap{}
+	for _, val := range r.Value {
+		for _, t := range val.ResourceTypes {
+			if len(t.APIVersions) == 0 {
+				continue
+			}
+			resourceType := strings.Join([]string{val.Namespace, t.ResourceType}, "/")
+			apiVersions[resourceType] = latestVersionFrom(t.APIVersions)
+		}
+	}
+	return apiVersions
+}
+
+func (m *APIVersionMap) findBy(resourceType string) string {
+	var apiVersion string
+	for mType, mVersion := range *m {
+		if mType == resourceType {
+			apiVersion = mVersion
+			break
+		}
+	}
+	return apiVersion
 }
 
 // AzureClient represents our client to talk to the Azure api
@@ -88,6 +170,7 @@ type AzureClient struct {
 	client               *http.Client
 	accessToken          string
 	accessTokenExpiresOn time.Time
+	APIVersions          APIVersionMap
 }
 
 // NewAzureClient returns an Azure client to talk the Azure API
@@ -137,9 +220,7 @@ func (ac *AzureClient) getAccessToken() error {
 
 // Returns metric definitions for all configured target and resource groups
 func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionResponse, error) {
-
 	definitions := make(map[string]AzureMetricDefinitionResponse)
-
 	for _, target := range sc.C.Targets {
 		def, err := ac.getAzureMetricDefinitionResponse(target.Resource)
 		if err != nil {
@@ -155,14 +236,13 @@ func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionR
 				resourceGroup.ResourceGroup, resourceGroup.ResourceTypes, err)
 		}
 		for _, resource := range resources {
-			def, err := ac.getAzureMetricDefinitionResponse(resource)
+			def, err := ac.getAzureMetricDefinitionResponse(resource.ID)
 			if err != nil {
 				return nil, err
 			}
-			definitions[resource] = *def
+			definitions[resource.ID] = *def
 		}
 	}
-
 	return definitions, nil
 }
 
@@ -195,22 +275,22 @@ func (ac *AzureClient) getAzureMetricDefinitionResponse(resource string) (*Azure
 	if err != nil {
 		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
-
 	return def, nil
 }
 
 // Returns resource list resolved and filtered from resource_groups configuration
-func (ac *AzureClient) filteredListFromResourceGroup(resourceGroup config.ResourceGroup) ([]string, error) {
+func (ac *AzureClient) filteredListFromResourceGroup(resourceGroup config.ResourceGroup) ([]AzureResource, error) {
 	resources, err := ac.listFromResourceGroup(resourceGroup.ResourceGroup, resourceGroup.ResourceTypes)
 	if err != nil {
 		return nil, err
 	}
 	filteredResources := ac.filterResources(resources, resourceGroup)
+
 	return filteredResources, nil
 }
 
 // Returns resource list filtered by tag name and tag value
-func (ac *AzureClient) filteredListByTag(resourceTag config.ResourceTag) ([]string, error) {
+func (ac *AzureClient) filteredListByTag(resourceTag config.ResourceTag) ([]AzureResource, error) {
 	resources, err := ac.listByTag(resourceTag.ResourceTagName, resourceTag.ResourceTagValue, resourceTag.ResourceTypes)
 	if err != nil {
 		return nil, err
@@ -219,7 +299,7 @@ func (ac *AzureClient) filteredListByTag(resourceTag config.ResourceTag) ([]stri
 }
 
 // Returns all resources for given resource group and types
-func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes []string) ([]string, error) {
+func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes []string) ([]AzureResource, error) {
 	apiVersion := "2018-02-01"
 
 	var filterTypesElements []string
@@ -227,13 +307,10 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 		filterTypesElements = append(filterTypesElements, fmt.Sprintf("resourcetype eq '%s'", filterType))
 	}
 	filterTypes := url.QueryEscape(strings.Join(filterTypesElements, " or "))
-
 	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
-
 	resourcesEndpoint := fmt.Sprintf("%s/%s/resourceGroups/%s/resources?api-version=%s&$filter=%s", sc.C.ResourceManagerURL, subscription, resourceGroup, apiVersion, filterTypes)
 
 	body, err := getAzureMonitorResponse(resourcesEndpoint)
-
 	if err != nil {
 		return nil, err
 	}
@@ -243,25 +320,19 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 	if err != nil {
 		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
-
-	resources := extractResourceNames(data, subscription)
-
-	return resources, nil
+	return data.extendResources(), nil
 }
 
 // Returns all resource with the given couple tagname, tagvalue
-func (ac *AzureClient) listByTag(tagName string, tagValue string, types []string) ([]string, error) {
+func (ac *AzureClient) listByTag(tagName string, tagValue string, types []string) ([]AzureResource, error) {
 	apiVersion := "2018-05-01"
 	securedTagName := secureString(tagName)
 	securedTagValue := secureString(tagValue)
 	filterTypes := url.QueryEscape(fmt.Sprintf("tagName eq '%s' and tagValue eq '%s'", securedTagName, securedTagValue))
-
 	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
-
 	resourcesEndpoint := fmt.Sprintf("%s/%s/resources?api-version=%s&$filter=%s", sc.C.ResourceManagerURL, subscription, apiVersion, filterTypes)
 
 	body, err := getAzureMonitorResponse(resourcesEndpoint)
-
 	if err != nil {
 		return nil, err
 	}
@@ -271,12 +342,32 @@ func (ac *AzureClient) listByTag(tagName string, tagValue string, types []string
 	if err != nil {
 		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
+
 	if len(types) > 0 {
 		data.Value = data.filterTypesInResourceList(types)
 	}
-	resources := extractResourceNames(data, subscription)
+	return data.extendResources(), nil
+}
 
-	return resources, nil
+func (ac *AzureClient) listAPIVersions() error {
+	apiVersion := "2019-05-10"
+	var versionResponse APIVersionResponse
+
+	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
+	resourcesEndpoint := fmt.Sprintf("%s/%s/providers?api-version=%s", sc.C.ResourceManagerURL, subscription, apiVersion)
+
+	body, err := getAzureMonitorResponse(resourcesEndpoint)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(body, &versionResponse)
+	if err != nil {
+		return fmt.Errorf("Error unmarshalling response body: %v", err)
+	}
+
+	ac.APIVersions = versionResponse.extractAPIVersions()
+	return nil
 }
 
 func (response *AzureResourceListResponse) filterTypesInResourceList(types []string) []AzureResource {
@@ -291,7 +382,6 @@ func (response *AzureResourceListResponse) filterTypesInResourceList(types []str
 		}
 	}
 	return filteredResources
-
 }
 
 func secureString(value string) string {
@@ -320,39 +410,32 @@ func getAzureMonitorResponse(azureManagementEndpoint string) ([]byte, error) {
 		return nil, fmt.Errorf("Error reading body of response: %v", err)
 	}
 	return body, err
-
 }
 
-// Extract resource names from the AzureResourceListResponse
-func extractResourceNames(data AzureResourceListResponse, subscription string) []string {
-	var resources []string
-	for _, result := range data.Value {
-		// subscription + leading '/'
-		subscriptionPrefixLen := len(subscription) + 1
+func (ar *AzureResourceListResponse) extendResources() []AzureResource {
+	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
+	var subscriptionPrefixLen = len(subscription) + 1
 
-		// remove subscription from path to match manually specified ones
-		resources = append(resources, result.Id[subscriptionPrefixLen:])
+	for i, val := range ar.Value {
+		ar.Value[i].ID = val.ID[subscriptionPrefixLen:]
+		ar.Value[i].Subscription = sc.C.Credentials.SubscriptionID
 	}
-	return resources
+	return ar.Value
 }
 
 // Returns a filtered resource list based on a given resource list and regular expressions from the configuration
-func (ac *AzureClient) filterResources(resources []string, resourceGroup config.ResourceGroup) []string {
-	filteredResources := []string{}
+func (ac *AzureClient) filterResources(resources []AzureResource, resourceGroup config.ResourceGroup) []AzureResource {
+	filteredResources := []AzureResource{}
 
 	for _, resource := range resources {
-		resourceParts := strings.Split(resource, "/")
-		resourceName := resourceParts[len(resourceParts)-1]
-
 		if len(resourceGroup.ResourceNameIncludeRe) != 0 {
 			include := false
 			for _, rx := range resourceGroup.ResourceNameIncludeRe {
-				if rx.MatchString(resourceName) {
+				if rx.MatchString(resource.Name) {
 					include = true
 					break
 				}
 			}
-
 			if !include {
 				continue
 			}
@@ -360,7 +443,7 @@ func (ac *AzureClient) filterResources(resources []string, resourceGroup config.
 
 		exclude := false
 		for _, rx := range resourceGroup.ResourceNameExcludeRe {
-			if rx.MatchString(resourceName) {
+			if rx.MatchString(resource.Name) {
 				exclude = true
 				break
 			}
@@ -369,23 +452,21 @@ func (ac *AzureClient) filterResources(resources []string, resourceGroup config.
 		if exclude {
 			continue
 		}
-
 		filteredResources = append(filteredResources, resource)
 	}
-
 	return filteredResources
 }
 
 func (ac *AzureClient) refreshAccessToken() error {
 	now := time.Now().UTC()
 	refreshAt := ac.accessTokenExpiresOn.Add(-10 * time.Minute)
+
 	if now.After(refreshAt) {
 		err := ac.getAccessToken()
 		if err != nil {
 			return fmt.Errorf("Error refreshing access token: %v", err)
 		}
 	}
-
 	return nil
 }
 
@@ -425,7 +506,7 @@ func resourceURLFrom(resource string, metricNames string, aggregations []string)
 	return url.String()
 }
 
-func (ac *AzureClient) getBatchMetricValues(urls []string) (AzureBatchRequestResponse, error) {
+func (ac *AzureClient) getBatchResponseBody(urls []string) ([]byte, error) {
 	apiURL := "https://management.azure.com/batch?api-version=2017-03-01"
 
 	batch := batchBody{}
@@ -438,32 +519,25 @@ func (ac *AzureClient) getBatchMetricValues(urls []string) (AzureBatchRequestRes
 
 	batchJSON, err := json.Marshal(batch)
 	if err != nil {
-		return AzureBatchRequestResponse{}, err
+		return nil, err
 	}
 
 	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(batchJSON))
 	if err != nil {
-		return AzureBatchRequestResponse{}, fmt.Errorf("Error creating HTTP request: %v", err)
+		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
 
 	resp, err := ac.client.Do(req)
 	if err != nil {
-		return AzureBatchRequestResponse{}, fmt.Errorf("Error: %v", err)
+		return nil, fmt.Errorf("Error: %v", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return AzureBatchRequestResponse{}, err
+		return nil, err
 	}
-
-	var data AzureBatchRequestResponse
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		return AzureBatchRequestResponse{}, fmt.Errorf("Error unmarshalling response body: %v", err)
-	}
-
-	return data, nil
+	return body, nil
 }

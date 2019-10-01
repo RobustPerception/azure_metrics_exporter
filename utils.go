@@ -4,8 +4,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"reflect"
+	"regexp"
 	"strings"
 	"time"
+)
+
+var (
+	// resource component positions in a ResourceURL
+	resourceGroupPosition   = 4
+	resourceNamePosition    = 8
+	subResourceNamePosition = 10
+
+	invalidLabelPrefix = regexp.MustCompile(`^[^a-zA-Z_]*`)
+	invalidLabelChars  = regexp.MustCompile(`[^a-zA-Z0-9_]+`)
 )
 
 // PrintPrettyJSON - Prints structs nicely for debugging.
@@ -32,12 +44,50 @@ func GetTimes() (string, string) {
 func CreateResourceLabels(resourceID string) map[string]string {
 	labels := make(map[string]string)
 	resource := strings.Split(resourceID, "/")
-	labels["resource_group"] = resource[4]
-	labels["resource_name"] = resource[8]
+	labels["resource_group"] = resource[resourceGroupPosition]
+	labels["resource_name"] = resource[resourceNamePosition]
 	if len(resource) > 13 {
-		labels["sub_resource_name"] = resource[10]
+		labels["sub_resource_name"] = resource[subResourceNamePosition]
 	}
 
+	return labels
+}
+
+func CreateAllResourceLabelsFrom(rm resourceMeta) map[string]string {
+	formatTag := "pretty"
+	labels := make(map[string]string)
+	split := strings.Split(rm.resourceURL, "/")
+
+	// Most labels are handled by iterating over the fields of resourceMeta.AzureResource.
+	// Their tag values are used as label keys. The only label value that is created here
+	// is "resource_group", as the current implementation of resourceMeta doesn't
+	// store this information.
+	labels["resource_group"] = split[resourceGroupPosition]
+
+	for k, v := range rm.resource.Tags {
+		k = strings.ToLower(k)
+
+		if !invalidLabelPrefix.MatchString(k) {
+			k = "_" + k
+		}
+
+		k = invalidLabelChars.ReplaceAllString(k, "_")
+		labels[k] = v
+	}
+
+	if len(split) > 13 {
+		labels["sub_resource_name"] = split[subResourceNamePosition]
+	}
+
+	// create a label for each field of the resource
+	val := reflect.ValueOf(rm.resource)
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		tag := reflect.TypeOf(rm.resource).Field(i).Tag.Get(formatTag)
+		if field.Kind() == reflect.String {
+			labels[tag] = field.String()
+		}
+	}
 	return labels
 }
 
