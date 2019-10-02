@@ -72,39 +72,42 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 		metricName = strings.ToLower(metricName + "_" + value.Unit)
 		metricName = strings.Replace(metricName, "/", "_per_", -1)
 		metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
-		metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
-		labels := CreateResourceLabels(rm.resourceURL)
 
-		if hasAggregation(rm.aggregations, "Total") {
-			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
-				prometheus.GaugeValue,
-				metricValue.Total,
-			)
-		}
+		if len(value.Timeseries) > 0 {
+			metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
+			labels := CreateResourceLabels(rm.resourceURL)
 
-		if hasAggregation(rm.aggregations, "Average") {
-			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(metricName+"_average", metricName+"_average", nil, labels),
-				prometheus.GaugeValue,
-				metricValue.Average,
-			)
-		}
+			if hasAggregation(rm.aggregations, "Total") {
+				ch <- prometheus.MustNewConstMetric(
+					prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
+					prometheus.GaugeValue,
+					metricValue.Total,
+				)
+			}
 
-		if hasAggregation(rm.aggregations, "Minimum") {
-			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(metricName+"_min", metricName+"_min", nil, labels),
-				prometheus.GaugeValue,
-				metricValue.Minimum,
-			)
-		}
+			if hasAggregation(rm.aggregations, "Average") {
+				ch <- prometheus.MustNewConstMetric(
+					prometheus.NewDesc(metricName+"_average", metricName+"_average", nil, labels),
+					prometheus.GaugeValue,
+					metricValue.Average,
+				)
+			}
 
-		if hasAggregation(rm.aggregations, "Maximum") {
-			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(metricName+"_max", metricName+"_max", nil, labels),
-				prometheus.GaugeValue,
-				metricValue.Maximum,
-			)
+			if hasAggregation(rm.aggregations, "Minimum") {
+				ch <- prometheus.MustNewConstMetric(
+					prometheus.NewDesc(metricName+"_min", metricName+"_min", nil, labels),
+					prometheus.GaugeValue,
+					metricValue.Minimum,
+				)
+			}
+
+			if hasAggregation(rm.aggregations, "Maximum") {
+				ch <- prometheus.MustNewConstMetric(
+					prometheus.NewDesc(metricName+"_max", metricName+"_max", nil, labels),
+					prometheus.GaugeValue,
+					metricValue.Maximum,
+				)
+			}
 		}
 	}
 
