@@ -258,19 +258,25 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
+	resourcesCache := make(map[string][]AzureResource)
 	for _, resourceTag := range sc.C.ResourceTags {
 		metrics := []string{}
 		for _, metric := range resourceTag.Metrics {
 			metrics = append(metrics, metric.Name)
 		}
 		metricsStr := strings.Join(metrics, ",")
-
-		filteredResources, err := ac.filteredListByTag(resourceTag)
-		if err != nil {
-			log.Printf("Failed to get resources for tag name %s, tag value %s: %v",
-				resourceTag.ResourceTagName, resourceTag.ResourceTagValue, err)
-			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
-			return
+		var filteredResources []AzureResource
+		var err error
+		var tagExists bool
+		if filteredResources, tagExists = resourcesCache[getTagID(resourceTag)]; !tagExists {
+			filteredResources, err = ac.filteredListByTag(resourceTag)
+			if err != nil {
+				log.Printf("Failed to get resources for tag name %s, tag value %s: %v",
+					resourceTag.ResourceTagName, resourceTag.ResourceTagValue, err)
+				ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
+				return
+			}
+			resourcesCache[getTagID(resourceTag)] = filteredResources
 		}
 
 		for _, f := range filteredResources {
@@ -292,6 +298,10 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 
 	resources = append(resources, completeResources...)
 	c.batchCollectMetrics(ch, resources)
+}
+
+func getTagID(tag config.ResourceTag) string {
+	return tag.ResourceTagName + "=" + tag.ResourceTagValue
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
