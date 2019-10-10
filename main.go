@@ -258,25 +258,20 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
-	resourcesCache := make(map[string][]AzureResource)
+	resourcesCache := make(map[string][]byte)
 	for _, resourceTag := range sc.C.ResourceTags {
 		metrics := []string{}
 		for _, metric := range resourceTag.Metrics {
 			metrics = append(metrics, metric.Name)
 		}
 		metricsStr := strings.Join(metrics, ",")
-		var filteredResources []AzureResource
-		var err error
-		var tagExists bool
-		if filteredResources, tagExists = resourcesCache[getTagID(resourceTag)]; !tagExists {
-			filteredResources, err = ac.filteredListByTag(resourceTag)
-			if err != nil {
-				log.Printf("Failed to get resources for tag name %s, tag value %s: %v",
-					resourceTag.ResourceTagName, resourceTag.ResourceTagValue, err)
-				ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
-				return
-			}
-			resourcesCache[getTagID(resourceTag)] = filteredResources
+
+		filteredResources, err := ac.filteredListByTag(resourceTag, resourcesCache)
+		if err != nil {
+			log.Printf("Failed to get resources for tag name %s, tag value %s: %v",
+				resourceTag.ResourceTagName, resourceTag.ResourceTagValue, err)
+			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
+			return
 		}
 
 		for _, f := range filteredResources {
