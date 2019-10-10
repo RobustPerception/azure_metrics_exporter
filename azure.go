@@ -341,8 +341,6 @@ func (ac *AzureClient) listByTag(tagName string, tagValue string, types []string
 			return nil, err
 		}
 		resourcesMap[resourcesEndpoint] = body
-	} else {
-		log.Printf("USING CACHE FOR %s", resourcesEndpoint)
 	}
 	err = json.Unmarshal(body, &data)
 	if err != nil {
