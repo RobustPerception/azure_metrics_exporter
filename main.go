@@ -295,10 +295,6 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	c.batchCollectMetrics(ch, resources)
 }
 
-func getTagID(tag config.ResourceTag) string {
-	return tag.ResourceTagName + "=" + tag.ResourceTagValue
-}
-
 func handler(w http.ResponseWriter, r *http.Request) {
 	registry := prometheus.NewRegistry()
 	collector := &Collector{}
