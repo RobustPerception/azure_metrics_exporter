@@ -332,17 +332,18 @@ func (ac *AzureClient) listByTag(tagName string, tagValue string, types []string
 	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
 	resourcesEndpoint := fmt.Sprintf("%s/%s/resources?api-version=%s&$filter=%s", sc.C.ResourceManagerURL, subscription, apiVersion, filterTypes)
 
-	body, dataExists := resourcesMap[resourcesEndpoint]
-	data := AzureResourceListResponse{}
-	var err error
-	if !dataExists {
+	body, ok := resourcesMap[resourcesEndpoint]
+	if !ok {
+		var err error
 		body, err = getAzureMonitorResponse(resourcesEndpoint)
 		if err != nil {
 			return nil, err
 		}
 		resourcesMap[resourcesEndpoint] = body
 	}
-	err = json.Unmarshal(body, &data)
+
+	var data AzureResourceListResponse
+	err := json.Unmarshal(body, &data)
 	if err != nil {
 		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
