@@ -258,6 +258,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
+	resourcesCache := make(map[string][]byte)
 	for _, resourceTag := range sc.C.ResourceTags {
 		metrics := []string{}
 		for _, metric := range resourceTag.Metrics {
@@ -265,7 +266,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		}
 		metricsStr := strings.Join(metrics, ",")
 
-		filteredResources, err := ac.filteredListByTag(resourceTag)
+		filteredResources, err := ac.filteredListByTag(resourceTag, resourcesCache)
 		if err != nil {
 			log.Printf("Failed to get resources for tag name %s, tag value %s: %v",
 				resourceTag.ResourceTagName, resourceTag.ResourceTagValue, err)
