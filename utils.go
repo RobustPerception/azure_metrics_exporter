@@ -39,10 +39,10 @@ func GetTimes() (string, string) {
 	return endTime, startTime
 }
 
-// CreateResourceLabels - Returns resource labels for a give resource ID.
-func CreateResourceLabels(resourceID string) map[string]string {
+// CreateResourceLabels - Returns resource labels for a given resource URL.
+func CreateResourceLabels(resourceURL string) map[string]string {
 	labels := make(map[string]string)
-	resource := strings.Split(resourceID, "/")
+	resource := strings.Split(resourceURL, "/")
 	labels["resource_group"] = resource[resourceGroupPosition]
 	labels["resource_name"] = resource[resourceNamePosition]
 	if len(resource) > 13 {
@@ -55,23 +55,12 @@ func CreateResourceLabels(resourceID string) map[string]string {
 func CreateAllResourceLabelsFrom(rm resourceMeta) map[string]string {
 	formatTag := "pretty"
 	labels := make(map[string]string)
-	split := strings.Split(rm.resourceURL, "/")
-
-	// Most labels are handled by iterating over the fields of resourceMeta.AzureResource.
-	// Their tag values are used as label keys. The only label value that is created here
-	// is "resource_group", as the current implementation of resourceMeta doesn't
-	// store this information.
-	labels["resource_group"] = split[resourceGroupPosition]
 
 	for k, v := range rm.resource.Tags {
 		k = strings.ToLower(k)
 		k = "tag_" + k
 		k = invalidLabelChars.ReplaceAllString(k, "_")
 		labels[k] = v
-	}
-
-	if len(split) > 13 {
-		labels["sub_resource_name"] = split[subResourceNamePosition]
 	}
 
 	// create a label for each field of the resource
@@ -82,6 +71,15 @@ func CreateAllResourceLabelsFrom(rm resourceMeta) map[string]string {
 		if field.Kind() == reflect.String {
 			labels[tag] = field.String()
 		}
+	}
+
+	// Most labels are handled by iterating over the fields of resourceMeta.AzureResource.
+	// Their tag values are used as label keys.
+	// To keep coherence with the metric labels, we create "resource_group",  "resource_name"
+	// and "sub_resource_name" by invoking CreateResourceLabels.
+	resourceLabels := CreateResourceLabels(rm.resourceURL)
+	for k, v := range resourceLabels {
+		labels[k] = v
 	}
 	return labels
 }
