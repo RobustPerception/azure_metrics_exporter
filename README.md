@@ -37,8 +37,12 @@ This exporter requires a configuration file. By default, it will look for the az
 
 This exporter reads metrics from an existing Azure subscription with these requirements:
 
+* If not using managed identities:
   * An application must be registered (e.g., Azure Active Directory -> App registrations -> New application registration)
   * The registered application must have reading permission to Azure Monitor (e.g., Subscriptions -> your_subscription -> Access control (IAM) -> Role assignments -> Add -> Add role assignment -> Role : "Monitoring Reader", Select:  my_app)
+
+* If using managed identities:
+  * The VM running the azure-metrics-exporter must have reading permission to Azure Monitor (e.g., Subscriptions -> your_subscription -> Access control (IAM) -> Role assignments -> Add -> Add role assignment -> Role : "Monitoring Reader", Select:  my_vm)
 
 ### Example azure-metrics-exporter config
 
@@ -55,6 +59,8 @@ The `client_id` and `client_secret` are obtained by registering an application u
 If you want to scrape metrics from Azure national clouds (e.g. AzureChinaCloud, AzureGermanCloud), you should provide `active_directory_authority_url` and `resource_manager_url` parameters. `active_directory_authority_url` is AzureAD url for getting access token. `resource_manager_url` is Azure API management url.
 If you won't provide `active_directory_authority_url` and `resource_manager_url` parameters, azure-metrics-exporter scrapes metrics from global cloud.
 You can find endpoints for national clouds [here](http://www.azurespeed.com/Information/AzureEnvironments)
+
+If using managed identities, only `subscription_id` is needed.
 
 ```
 active_directory_authority_url: "https://login.microsoftonline.com/"
