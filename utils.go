@@ -43,12 +43,12 @@ func GetTimes() (string, string) {
 func CreateResourceLabels(resourceURL string) map[string]string {
 	labels := make(map[string]string)
 	resource := strings.Split(resourceURL, "/")
+
 	labels["resource_group"] = resource[resourceGroupPosition]
 	labels["resource_name"] = resource[resourceNamePosition]
 	if len(resource) > 13 {
 		labels["sub_resource_name"] = resource[subResourceNamePosition]
 	}
-
 	return labels
 }
 
