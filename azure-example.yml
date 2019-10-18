@@ -1,6 +1,7 @@
 ---
 active_directory_authority_url: "https://login.microsoftonline.com/"
 resource_manager_url: "https://management.azure.com/"
+authentication_method: "OAuth"
 credentials:
   subscription_id: <secret>
   client_id: <secret>

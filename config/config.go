@@ -14,6 +14,7 @@ import (
 type Config struct {
 	ActiveDirectoryAuthorityURL string          `yaml:"active_directory_authority_url"`
 	ResourceManagerURL          string          `yaml:"resource_manager_url"`
+	AuthenticationMethod        string          `yaml:"authentication_method,omitempty"`
 	Credentials                 Credentials     `yaml:"credentials"`
 	Targets                     []Target        `yaml:"targets"`
 	ResourceGroups              []ResourceGroup `yaml:"resource_groups"`

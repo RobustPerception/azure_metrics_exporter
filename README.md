@@ -46,6 +46,10 @@ This exporter reads metrics from an existing Azure subscription with these requi
 
 ### Example azure-metrics-exporter config
 
+`authentication_method` can be either `OAuth` or `ManagedIdentity`. Default is `Oauth`
+
+If `authentication_method` is set to `ManagedIdentity`, only `subscription_id` is required for `credentials`.
+
 `azure_resource_id` and `subscription_id` can be found under properties in the Azure portal for your application/service.
 
 `azure_resource_id`  should start with `/resourceGroups...` (`/subscriptions/xxxxxxxx-xxxx-xxxx-xxx-xxxxxxxxx` must be removed from the begining of `azure_resource_id` property value)
@@ -60,11 +64,10 @@ If you want to scrape metrics from Azure national clouds (e.g. AzureChinaCloud, 
 If you won't provide `active_directory_authority_url` and `resource_manager_url` parameters, azure-metrics-exporter scrapes metrics from global cloud.
 You can find endpoints for national clouds [here](http://www.azurespeed.com/Information/AzureEnvironments)
 
-If using managed identities, only `subscription_id` is needed.
-
 ```
 active_directory_authority_url: "https://login.microsoftonline.com/"
 resource_manager_url: "https://management.azure.com/"
+authentication_method: "Oauth"
 credentials:
   subscription_id: <secret>
   client_id: <secret>

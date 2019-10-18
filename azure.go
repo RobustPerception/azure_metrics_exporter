@@ -185,7 +185,7 @@ func NewAzureClient() *AzureClient {
 func (ac *AzureClient) getAccessToken() error {
 	var resp *http.Response
 	var err error
-	if *managedIdentity {
+	if sc.C.AuthenticationMethod == "ManagedIdentity" {
 		log.Printf("Using managed identity")
 		target := fmt.Sprintf("http://169.254.169.254/metadata/identity/oauth2/token?resource=%s&api-version=2018-02-01", sc.C.ResourceManagerURL)
 		req, err := http.NewRequest("GET", target, nil)
