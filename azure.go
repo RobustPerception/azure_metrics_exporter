@@ -290,8 +290,8 @@ func (ac *AzureClient) filteredListFromResourceGroup(resourceGroup config.Resour
 }
 
 // Returns resource list filtered by tag name and tag value
-func (ac *AzureClient) filteredListByTag(resourceTag config.ResourceTag) ([]AzureResource, error) {
-	resources, err := ac.listByTag(resourceTag.ResourceTagName, resourceTag.ResourceTagValue, resourceTag.ResourceTypes)
+func (ac *AzureClient) filteredListByTag(resourceTag config.ResourceTag, resourcesMap map[string][]byte) ([]AzureResource, error) {
+	resources, err := ac.listByTag(resourceTag.ResourceTagName, resourceTag.ResourceTagValue, resourceTag.ResourceTypes, resourcesMap)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +324,7 @@ func (ac *AzureClient) listFromResourceGroup(resourceGroup string, resourceTypes
 }
 
 // Returns all resource with the given couple tagname, tagvalue
-func (ac *AzureClient) listByTag(tagName string, tagValue string, types []string) ([]AzureResource, error) {
+func (ac *AzureClient) listByTag(tagName string, tagValue string, types []string, resourcesMap map[string][]byte) ([]AzureResource, error) {
 	apiVersion := "2018-05-01"
 	securedTagName := secureString(tagName)
 	securedTagValue := secureString(tagValue)
@@ -332,13 +332,18 @@ func (ac *AzureClient) listByTag(tagName string, tagValue string, types []string
 	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
 	resourcesEndpoint := fmt.Sprintf("%s/%s/resources?api-version=%s&$filter=%s", sc.C.ResourceManagerURL, subscription, apiVersion, filterTypes)
 
-	body, err := getAzureMonitorResponse(resourcesEndpoint)
-	if err != nil {
-		return nil, err
+	body, ok := resourcesMap[resourcesEndpoint]
+	if !ok {
+		var err error
+		body, err = getAzureMonitorResponse(resourcesEndpoint)
+		if err != nil {
+			return nil, err
+		}
+		resourcesMap[resourcesEndpoint] = body
 	}
 
 	var data AzureResourceListResponse
-	err = json.Unmarshal(body, &data)
+	err := json.Unmarshal(body, &data)
 	if err != nil {
 		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
