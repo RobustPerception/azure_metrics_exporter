@@ -190,7 +190,7 @@ func (ac *AzureClient) getAccessToken() error {
 		target := fmt.Sprintf("http://169.254.169.254/metadata/identity/oauth2/token?resource=%s&api-version=2018-02-01", sc.C.ResourceManagerURL)
 		req, err := http.NewRequest("GET", target, nil)
 		if err != nil {
-			return fmt.Errorf("Error authenticating against Azure API: %v", err)
+			return fmt.Errorf("Error getting token against Azure MSI endpoint: %v", err)
 		}
 		req.Header.Add("Metadata", "true")
 		resp, err = ac.client.Do(req)
