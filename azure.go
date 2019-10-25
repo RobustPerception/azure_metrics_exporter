@@ -183,14 +183,27 @@ func NewAzureClient() *AzureClient {
 }
 
 func (ac *AzureClient) getAccessToken() error {
-	target := fmt.Sprintf("%s/%s/oauth2/token", sc.C.ActiveDirectoryAuthorityURL, sc.C.Credentials.TenantID)
-	form := url.Values{
-		"grant_type":    {"client_credentials"},
-		"resource":      {sc.C.ResourceManagerURL},
-		"client_id":     {sc.C.Credentials.ClientID},
-		"client_secret": {sc.C.Credentials.ClientSecret},
+	var resp *http.Response
+	var err error
+	if len(sc.C.Credentials.ClientID) == 0 {
+		log.Printf("Using managed identity")
+		target := fmt.Sprintf("http://169.254.169.254/metadata/identity/oauth2/token?resource=%s&api-version=2018-02-01", sc.C.ResourceManagerURL)
+		req, err := http.NewRequest("GET", target, nil)
+		if err != nil {
+			return fmt.Errorf("Error getting token against Azure MSI endpoint: %v", err)
+		}
+		req.Header.Add("Metadata", "true")
+		resp, err = ac.client.Do(req)
+	} else {
+		target := fmt.Sprintf("%s/%s/oauth2/token", sc.C.ActiveDirectoryAuthorityURL, sc.C.Credentials.TenantID)
+		form := url.Values{
+			"grant_type":    {"client_credentials"},
+			"resource":      {sc.C.ResourceManagerURL},
+			"client_id":     {sc.C.Credentials.ClientID},
+			"client_secret": {sc.C.Credentials.ClientSecret},
+		}
+		resp, err = ac.client.PostForm(target, form)
 	}
-	resp, err := ac.client.PostForm(target, form)
 	if err != nil {
 		return fmt.Errorf("Error authenticating against Azure API: %v", err)
 	}

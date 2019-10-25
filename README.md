@@ -37,8 +37,13 @@ This exporter requires a configuration file. By default, it will look for the az
 
 This exporter reads metrics from an existing Azure subscription with these requirements:
 
+* If not using managed identities:
   * An application must be registered (e.g., Azure Active Directory -> App registrations -> New application registration)
-  * The registered application must have reading permission to Azure Monitor (e.g., Subscriptions -> your_subscription -> Access control (IAM) -> Role assignments -> Add -> Add role assignment -> Role : "Monitoring Reader", Select:  my_app)
+  * The registered application must have reading permission to Azure Monitor (e.g., Subscriptions -> your_subscription -> Access control (IAM) -> Role assignments -> Add -> Add role assignment -> Role : "Monitoring Reader", Select:  your_app)
+
+* If using managed identities:
+  * The VM running the azure-metrics-exporter must have reading permission to Azure Monitor (e.g., Subscriptions -> your_subscription -> Access control (IAM) -> Role assignments -> Add -> Add role assignment -> Role : "Monitoring Reader", Select:  your_vm)
+  * Only `subscription_id` will be needed in your credentials configuration.
 
 ### Example azure-metrics-exporter config
 
