@@ -64,7 +64,6 @@ You can find endpoints for national clouds [here](http://www.azurespeed.com/Info
 ```
 active_directory_authority_url: "https://login.microsoftonline.com/"
 resource_manager_url: "https://management.azure.com/"
-authentication_method: "Oauth"
 credentials:
   subscription_id: <secret>
   client_id: <secret>
