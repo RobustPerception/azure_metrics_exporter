@@ -209,7 +209,8 @@ func (ac *AzureClient) getAccessToken() error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("Did not get status code 200, got: %d", resp.StatusCode)
+		respBytest, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("Did not get status code 200, got: %d with body: %s", resp.StatusCode, string(respBytest))
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
