@@ -526,7 +526,13 @@ func resourceURLFrom(resource string, metricNames string, aggregations []string)
 }
 
 func (ac *AzureClient) getBatchResponseBody(urls []string) ([]byte, error) {
-	apiURL := "https://management.azure.com/batch?api-version=2017-03-01"
+
+	rmBaseURL := sc.C.ResourceManagerURL
+	if !strings.HasSuffix(sc.C.ResourceManagerURL, "/") {
+		rmBaseURL += "/"
+	}
+
+	apiURL := fmt.Sprintf("%sbatch?api-version=2017-03-01", rmBaseURL)
 
 	batch := batchBody{}
 	for _, u := range urls {
