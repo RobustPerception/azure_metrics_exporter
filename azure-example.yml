@@ -35,4 +35,4 @@ resource_tags:
       - "Microsoft.Compute/virtualMachines"
     metrics:
       - name: "CPU Credits consumed"
-    timespan: 10
+    delay_minutes: 10

@@ -102,7 +102,7 @@ resource_tags:
       - "Microsoft.Compute/virtualMachines"
     metrics:
       - name: "CPU Credits Consumed"
-    timespan: 10
+    delay_minutes: 10
 ```
 
 By default, all aggregations are returned (`Total`, `Maximum`, `Average`, `Minimum`). It can be overridden per resource.
