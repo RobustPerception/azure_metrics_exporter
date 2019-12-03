@@ -127,9 +127,10 @@ type Credentials struct {
 
 // Target represents Azure target resource and its associated metric definitions
 type Target struct {
-	Resource     string   `yaml:"resource"`
-	Metrics      []Metric `yaml:"metrics"`
-	Aggregations []string `yaml:"aggregations"`
+	Resource      string   `yaml:"resource"`
+	Metrics       []Metric `yaml:"metrics"`
+	Aggregations  []string `yaml:"aggregations"`
+	TimespanBegin int      `yaml:"timespan"`
 
 	XXX map[string]interface{} `yaml:",inline"`
 }
@@ -142,6 +143,7 @@ type ResourceGroup struct {
 	ResourceNameExcludeRe []Regexp `yaml:"resource_name_exclude_re"`
 	Metrics               []Metric `yaml:"metrics"`
 	Aggregations          []string `yaml:"aggregations"`
+	TimespanBegin         int      `yaml:"timespan"`
 
 	XXX map[string]interface{} `yaml:",inline"`
 }
@@ -153,6 +155,7 @@ type ResourceTag struct {
 	ResourceTypes    []string `yaml:"resource_types"`
 	Metrics          []Metric `yaml:"metrics"`
 	Aggregations     []string `yaml:"aggregations"`
+	TimespanBegin    int      `yaml:"timespan"`
 
 	XXX map[string]interface{} `yaml:",inline"`
 }
