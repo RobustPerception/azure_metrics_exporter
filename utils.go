@@ -28,14 +28,20 @@ func PrintPrettyJSON(input map[string]interface{}) {
 	fmt.Println(string(out))
 }
 
+const DefaultDelay = 3
+
 // GetTimes - Returns the endTime and startTime used for querying Azure Metrics API
-func GetTimes() (string, string) {
+// set delay to 0 to use the default
+func GetTimes(delay int) (string, string) {
 	// Make sure we are using UTC
 	now := time.Now().UTC()
 
-	// Use query delay of 3 minutes when querying for latest metric data
-	endTime := now.Add(time.Minute * time.Duration(-3)).Format(time.RFC3339)
-	startTime := now.Add(time.Minute * time.Duration(-4)).Format(time.RFC3339)
+	if delay == 0 {
+		delay = DefaultDelay
+	}
+	// Use query delay of 3 minutes by default or use the delay passed when querying for latest metric data
+	endTime := now.Add(time.Minute * time.Duration(-delay+1)).Format(time.RFC3339)
+	startTime := now.Add(time.Minute * time.Duration(-delay)).Format(time.RFC3339)
 	return endTime, startTime
 }
 

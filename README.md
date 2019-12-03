@@ -102,7 +102,7 @@ resource_tags:
       - "Microsoft.Compute/virtualMachines"
     metrics:
       - name: "CPU Credits Consumed"
-
+    delay_minutes: 10
 ```
 
 By default, all aggregations are returned (`Total`, `Maximum`, `Average`, `Minimum`). It can be overridden per resource.
@@ -135,6 +135,10 @@ Name of the tag to be filtered against.
 Value of the tag to be filtered against.
 
 `resource_types`: optional list of types kept in the list of resources gathered by tag. If none are specified, then all the resources are kept. All defined metrics must exist for each processed resource.
+
+### Metrics delay override
+You can override the delay used to retrieve the newest data. It is used to avoid collecting data that has not fully
+converged. Defaults to 3 minutes.
 
 ## Prometheus configuration
 

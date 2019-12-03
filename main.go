@@ -228,7 +228,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		rm.resourceID = target.Resource
 		rm.metrics = strings.Join(metrics, ",")
 		rm.aggregations = filterAggregations(target.Aggregations)
-		rm.resourceURL = resourceURLFrom(target.Resource, rm.metrics, rm.aggregations)
+		rm.resourceURL = resourceURLFrom(target.Resource, rm.metrics, rm.aggregations, target.DelayMinutes)
 		incompleteResources = append(incompleteResources, rm)
 	}
 
@@ -252,7 +252,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			rm.resourceID = f.ID
 			rm.metrics = metricsStr
 			rm.aggregations = filterAggregations(resourceGroup.Aggregations)
-			rm.resourceURL = resourceURLFrom(f.ID, rm.metrics, rm.aggregations)
+			rm.resourceURL = resourceURLFrom(f.ID, rm.metrics, rm.aggregations, resourceGroup.DelayMinutes)
 			rm.resource = f
 			resources = append(resources, rm)
 		}
@@ -279,7 +279,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			rm.resourceID = f.ID
 			rm.metrics = metricsStr
 			rm.aggregations = filterAggregations(resourceTag.Aggregations)
-			rm.resourceURL = resourceURLFrom(f.ID, rm.metrics, rm.aggregations)
+			rm.resourceURL = resourceURLFrom(f.ID, rm.metrics, rm.aggregations, resourceTag.DelayMinutes)
 			incompleteResources = append(incompleteResources, rm)
 		}
 	}
