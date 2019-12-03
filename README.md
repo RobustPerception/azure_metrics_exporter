@@ -102,7 +102,7 @@ resource_tags:
       - "Microsoft.Compute/virtualMachines"
     metrics:
       - name: "CPU Credits Consumed"
-
+    timespan: 10
 ```
 
 By default, all aggregations are returned (`Total`, `Maximum`, `Average`, `Minimum`). It can be overridden per resource.
@@ -135,6 +135,12 @@ Name of the tag to be filtered against.
 Value of the tag to be filtered against.
 
 `resource_types`: optional list of types kept in the list of resources gathered by tag. If none are specified, then all the resources are kept. All defined metrics must exist for each processed resource.
+
+### Timespan override
+To get the values of the metrics, the exporter uses a default timeframe starting 3 minutes before the time
+of the request and 2 minutes. Some metrics that are not yet gathered will carry 0 values that are not relevant
+on some cases. To avoid this you can use the `timespan` option that takes a number of minutes from the time of the 
+request to start the timeframe.
 
 ## Prometheus configuration
 
