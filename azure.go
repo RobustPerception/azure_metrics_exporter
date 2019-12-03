@@ -515,7 +515,7 @@ func resourceURLFrom(resource string, metricNames string, aggregations []string,
 	}
 	filtered := filterAggregations(aggregations)
 	values.Add("aggregation", strings.Join(filtered, ","))
-	values.Add("delay", fmt.Sprintf("%s/%s", startTime, endTime))
+	values.Add("timespan", fmt.Sprintf("%s/%s", startTime, endTime))
 	values.Add("api-version", apiVersion)
 
 	url := url.URL{
