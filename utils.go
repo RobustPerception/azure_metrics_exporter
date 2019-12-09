@@ -52,6 +52,19 @@ func CreateResourceLabels(resourceURL string) map[string]string {
 	return labels
 }
 
+func GetResourceType(resourceURL string) string {
+	resource := strings.Split(resourceURL, "/")
+	var str strings.Builder
+	str.WriteString(resource[6])
+	str.WriteString("/")
+	str.WriteString(resource[7])
+	if len(resource) > 13 {
+		str.WriteString("/")
+		str.WriteString(resource[9])
+	}
+	return str.String()
+}
+
 func CreateAllResourceLabelsFrom(rm resourceMeta) map[string]string {
 	formatTag := "pretty"
 	labels := make(map[string]string)

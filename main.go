@@ -171,7 +171,7 @@ func (c *Collector) batchLookupResources(resources []resourceMeta) ([]resourceMe
 
 		var urls []string
 		for _, r := range resources[i:j] {
-			resourceType := targetResourceType.FindString(r.resourceID)
+			resourceType := GetResourceType(r.resourceURL)
 			if resourceType == "" {
 				return nil, fmt.Errorf("No type found for resource: %s", r.resourceID)
 			}
