@@ -12,11 +12,13 @@ import (
 
 var (
 	// resource component positions in a ResourceURL
-	resourceGroupPosition   = 4
-	resourceNamePosition    = 8
-	subResourceNamePosition = 10
-
-	invalidLabelChars = regexp.MustCompile(`[^a-zA-Z0-9_]+`)
+	resourceGroupPosition      = 4
+	resourceNamePosition       = 8
+	subResourceNamePosition    = 10
+	resourceTypeSuffixPosition = 9
+	resourceTypePosition       = 7
+	resourceTypePrefixPosition = 6
+	invalidLabelChars          = regexp.MustCompile(`[^a-zA-Z0-9_]+`)
 )
 
 // PrintPrettyJSON - Prints structs nicely for debugging.
@@ -50,6 +52,20 @@ func CreateResourceLabels(resourceURL string) map[string]string {
 		labels["sub_resource_name"] = resource[subResourceNamePosition]
 	}
 	return labels
+}
+
+// GetResourceType returns the resource type with the namespace
+func GetResourceType(resourceURL string) string {
+	resource := strings.Split(resourceURL, "/")
+	var str strings.Builder
+	str.WriteString(resource[resourceTypePrefixPosition])
+	str.WriteString("/")
+	str.WriteString(resource[resourceTypePosition])
+	if len(resource) > 13 {
+		str.WriteString("/")
+		str.WriteString(resource[resourceTypeSuffixPosition])
+	}
+	return str.String()
 }
 
 func CreateAllResourceLabelsFrom(rm resourceMeta) map[string]string {

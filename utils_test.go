@@ -68,3 +68,27 @@ func TestCreateAllResourceLabelsFrom(t *testing.T) {
 		}
 	}
 }
+
+func TestCetResourceType(t *testing.T) {
+	var cases = []struct {
+		url  string
+		want string
+	}{
+		{
+			"/subscriptions/abc123d4-e5f6-g7h8-i9j10-a1b2c3d4e5f6/resourceGroups/prod-rg-001/providers/Microsoft.Compute/virtualMachines/prod-vm-01/providers/microsoft.insights/metrics",
+			"Microsoft.Compute/virtualMachines",
+		},
+		{
+			"/subscriptions/abc123d4-e5f6-g7h8-i9j10-a1b2c3d4e5f6/resourceGroups/prod-rg-002/providers/Microsoft.Sql/servers/sqlprod/databases/prod-db-01/providers/microsoft.insights/metrics",
+			"Microsoft.Sql/servers/databases",
+		},
+	}
+
+	for _, c := range cases {
+		got := GetResourceType(c.url)
+
+		if !reflect.DeepEqual(got, c.want) {
+			t.Errorf("doesn't create expected resource type\ngot: %v\nwant: %v", got, c.want)
+		}
+	}
+}
