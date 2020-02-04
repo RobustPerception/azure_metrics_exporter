@@ -29,6 +29,16 @@ In order to get all the metric definitions for the resources specified in your c
 
 This will print your resource id's application/service name along with a list of each of the available metric definitions that you can query for for that resource.
 
+## Retrieving Metric namespaces
+
+In order to get all the metric namespaces for the resources specified in your configuration file, run the following:
+
+```bash
+./azure-metrics-exporter --list.namespaces
+```
+
+This will print your resource id's application/service name along with a list of each of the available metric namespaces that you can query for for that resource.
+
 ## Exporter configuration
 
 This exporter requires a configuration file. By default, it will look for the azure.yml file in the CWD.

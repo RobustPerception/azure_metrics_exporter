@@ -26,6 +26,7 @@ var (
 	configFile            = kingpin.Flag("config.file", "Azure exporter configuration file.").Default("azure.yml").String()
 	listenAddress         = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9276").String()
 	listMetricDefinitions = kingpin.Flag("list.definitions", "List available metric definitions for the given resources and exit.").Bool()
+	listMetricNamespaces  = kingpin.Flag("list.namespaces", "List available metric namespaces for the given resources and exit.").Bool()
 	invalidMetricChars    = regexp.MustCompile("[^a-zA-Z0-9_:]")
 	azureErrorDesc        = prometheus.NewDesc("azure_error", "Error collecting metrics", nil, nil)
 	batchSize             = 20
@@ -326,6 +327,22 @@ func main() {
 			log.Printf("Resource: %s\n\nAvailable Metrics:\n", strings.Split(k, "/")[6])
 			for _, r := range v.MetricDefinitionResponses {
 				log.Printf("- %s\n", r.Name.Value)
+			}
+		}
+		os.Exit(0)
+	}
+
+	// Print list of available metric namespace for each resource to console if specified.
+	if *listMetricNamespaces {
+		results, err := ac.getMetricNamespaces()
+		if err != nil {
+			log.Fatalf("Failed to fetch metric namespaces: %v", err)
+		}
+
+		for k, v := range results {
+			log.Printf("Resource: %s\n\nAvailable namespaces:\n", strings.Split(k, "/")[6])
+			for _, namespace := range v.MetricNamespaceCollection {
+				log.Printf("- %s\n", namespace.Properties.MetricNamespaceName)
 			}
 		}
 		os.Exit(0)
