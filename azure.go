@@ -286,11 +286,11 @@ func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionR
 func (ac *AzureClient) getMetricNamespaces() (map[string]MetricNamespaceCollectionResponse, error) {
 	namespaces := make(map[string]MetricNamespaceCollectionResponse)
 	for _, target := range sc.C.Targets {
-		namespace, err := ac.getMetricNamespaceCollectionResponse(target.Resource)
+		namespaceCollection, err := ac.getMetricNamespaceCollectionResponse(target.Resource)
 		if err != nil {
 			return nil, err
 		}
-		namespaces[target.Resource] = *namespace
+		namespaces[target.Resource] = *namespaceCollection
 	}
 
 	for _, resourceGroup := range sc.C.ResourceGroups {
@@ -300,11 +300,11 @@ func (ac *AzureClient) getMetricNamespaces() (map[string]MetricNamespaceCollecti
 				resourceGroup.ResourceGroup, resourceGroup.ResourceTypes, err)
 		}
 		for _, resource := range resources {
-			namespace, err := ac.getMetricNamespaceCollectionResponse(resource.ID)
+			namespaceCollection, err := ac.getMetricNamespaceCollectionResponse(resource.ID)
 			if err != nil {
 				return nil, err
 			}
-			namespaces[resource.ID] = *namespace
+			namespaces[resource.ID] = *namespaceCollection
 		}
 	}
 	return namespaces, nil
