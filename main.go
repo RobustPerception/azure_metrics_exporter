@@ -344,7 +344,7 @@ func main() {
 		}
 
 		for k, v := range results {
-			log.Printf("Resource: %s\n\nAvailable namespaces:\n", strings.Split(k, "/")[6])
+			log.Printf("Resource: %s\n\nAvailable namespaces:\n", k)
 			for _, namespace := range v.MetricNamespaceCollection {
 				log.Printf("- %s\n", namespace.Properties.MetricNamespaceName)
 			}
