@@ -250,11 +250,15 @@ func (ac *AzureClient) getAccessToken() error {
 func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionResponse, error) {
 	definitions := make(map[string]AzureMetricDefinitionResponse)
 	for _, target := range sc.C.Targets {
-		def, err := ac.getAzureMetricDefinitionResponse(target.Resource)
+		def, err := ac.getAzureMetricDefinitionResponse(target.Resource, target.MetricNamespace)
 		if err != nil {
 			return nil, err
 		}
-		definitions[target.Resource] = *def
+		defKey := target.Resource
+		if len(target.MetricNamespace) > 0 {
+			defKey = fmt.Sprintf("%s (Metric namespace: %s)", defKey, target.MetricNamespace)
+		}
+		definitions[defKey] = *def
 	}
 
 	for _, resourceGroup := range sc.C.ResourceGroups {
@@ -264,11 +268,15 @@ func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionR
 				resourceGroup.ResourceGroup, resourceGroup.ResourceTypes, err)
 		}
 		for _, resource := range resources {
-			def, err := ac.getAzureMetricDefinitionResponse(resource.ID)
+			def, err := ac.getAzureMetricDefinitionResponse(resource.ID, resourceGroup.MetricNamespace)
 			if err != nil {
 				return nil, err
 			}
-			definitions[resource.ID] = *def
+			defKey := resource.ID
+			if len(resourceGroup.MetricNamespace) > 0 {
+				defKey = fmt.Sprintf("%s (Metric namespace: %s)", defKey, resourceGroup.MetricNamespace)
+			}
+			definitions[defKey] = *def
 		}
 	}
 	return definitions, nil
@@ -303,12 +311,15 @@ func (ac *AzureClient) getMetricNamespaces() (map[string]MetricNamespaceCollecti
 }
 
 // Returns AzureMetricDefinitionResponse for a given resource
-func (ac *AzureClient) getAzureMetricDefinitionResponse(resource string) (*AzureMetricDefinitionResponse, error) {
+func (ac *AzureClient) getAzureMetricDefinitionResponse(resource string, metricNamespace string) (*AzureMetricDefinitionResponse, error) {
 	apiVersion := "2018-01-01"
 
 	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, resource)
-	// TODO add &metricnamespace=Azure.VM.Windows.GuestMetrics"
 	metricsTarget := fmt.Sprintf("%s/%s/providers/microsoft.insights/metricDefinitions?api-version=%s", sc.C.ResourceManagerURL, metricsResource, apiVersion)
+	if len(metricNamespace) > 0 {
+		metricsTarget = fmt.Sprintf("%s&metricnamespace=%s", metricsTarget, metricNamespace)
+	}
+
 	req, err := http.NewRequest("GET", metricsTarget, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
@@ -359,12 +370,12 @@ func (ac *AzureClient) getMetricNamespaceCollectionResponse(resource string) (*M
 		return nil, fmt.Errorf("Error: %v", string(body))
 	}
 
-	namespace := &MetricNamespaceCollectionResponse{}
-	err = json.Unmarshal(body, namespace)
+	namespaceCollection := &MetricNamespaceCollectionResponse{}
+	err = json.Unmarshal(body, namespaceCollection)
 	if err != nil {
 		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
-	return namespace, nil
+	return namespaceCollection, nil
 }
 
 // Returns resource list resolved and filtered from resource_groups configuration
@@ -573,7 +584,7 @@ type batchRequest struct {
 	Method      string `json:"httpMethod"`
 }
 
-func resourceURLFrom(resource string, metricNames string, aggregations []string) string {
+func resourceURLFrom(resource string, metricNamespace string, metricNames string, aggregations []string) string {
 	apiVersion := "2018-01-01"
 
 	path := fmt.Sprintf(
@@ -588,11 +599,13 @@ func resourceURLFrom(resource string, metricNames string, aggregations []string)
 	if metricNames != "" {
 		values.Add("metricnames", metricNames)
 	}
+	if metricNamespace != "" {
+		values.Add("metricnamespace", metricNamespace)
+	}
 	filtered := filterAggregations(aggregations)
 	values.Add("aggregation", strings.Join(filtered, ","))
 	values.Add("timespan", fmt.Sprintf("%s/%s", startTime, endTime))
 	values.Add("api-version", apiVersion)
-	// TODO add values.Add("metricnamespace", "Azure.VM.Windows.GuestMetrics")
 
 	url := url.URL{
 		Path:     path,

@@ -93,6 +93,10 @@ targets:
     metrics:
     - name: "Http2xx"
     - name: "Http5xx"
+  - resource: "azure_resource_id"
+    metric_namespace: "Azure.VM.Windows.GuestMetrics"
+    metrics:
+    - name: 'Process\Thread Count'
 
 resource_groups:
   - resource_group: "webapps"
@@ -117,6 +121,9 @@ resource_tags:
 
 By default, all aggregations are returned (`Total`, `Maximum`, `Average`, `Minimum`). It can be overridden per resource.
 
+The `metric_namespace` property is optional for all filtering types.
+It can be used to target custom metrics, such as [guest OS performance counters](https://docs.microsoft.com/en-us/azure/azure-monitor/platform/collect-custom-metrics-guestos-vm-classic).
+If not specified, the default metric namespace of the resource will apply.
 
 ### Resource group filtering
 

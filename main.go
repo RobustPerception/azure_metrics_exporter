@@ -45,11 +45,12 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 type resourceMeta struct {
-	resourceID   string
-	resourceURL  string
-	metrics      string
-	aggregations []string
-	resource     AzureResource
+	resourceID      string
+	resourceURL     string
+	metricNamespace string
+	metrics         string
+	aggregations    []string
+	resource        AzureResource
 }
 
 func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta, httpStatusCode int, metricValueData AzureMetricValueResponse, publishedResources map[string]bool) {
@@ -227,9 +228,10 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		}
 
 		rm.resourceID = target.Resource
+		rm.metricNamespace = target.MetricNamespace
 		rm.metrics = strings.Join(metrics, ",")
 		rm.aggregations = filterAggregations(target.Aggregations)
-		rm.resourceURL = resourceURLFrom(target.Resource, rm.metrics, rm.aggregations)
+		rm.resourceURL = resourceURLFrom(target.Resource, rm.metricNamespace, rm.metrics, rm.aggregations)
 		incompleteResources = append(incompleteResources, rm)
 	}
 
@@ -251,9 +253,10 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		for _, f := range filteredResources {
 			var rm resourceMeta
 			rm.resourceID = f.ID
+			rm.metricNamespace = resourceGroup.MetricNamespace
 			rm.metrics = metricsStr
 			rm.aggregations = filterAggregations(resourceGroup.Aggregations)
-			rm.resourceURL = resourceURLFrom(f.ID, rm.metrics, rm.aggregations)
+			rm.resourceURL = resourceURLFrom(f.ID, rm.metricNamespace, rm.metrics, rm.aggregations)
 			rm.resource = f
 			resources = append(resources, rm)
 		}
@@ -278,9 +281,10 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		for _, f := range filteredResources {
 			var rm resourceMeta
 			rm.resourceID = f.ID
+			rm.metricNamespace = resourceTag.MetricNamespace
 			rm.metrics = metricsStr
 			rm.aggregations = filterAggregations(resourceTag.Aggregations)
-			rm.resourceURL = resourceURLFrom(f.ID, rm.metrics, rm.aggregations)
+			rm.resourceURL = resourceURLFrom(f.ID, rm.metricNamespace, rm.metrics, rm.aggregations)
 			incompleteResources = append(incompleteResources, rm)
 		}
 	}
@@ -324,7 +328,7 @@ func main() {
 		}
 
 		for k, v := range results {
-			log.Printf("Resource: %s\n\nAvailable Metrics:\n", strings.Split(k, "/")[6])
+			log.Printf("Resource: %s\n\nAvailable Metrics:\n", k)
 			for _, r := range v.MetricDefinitionResponses {
 				log.Printf("- %s\n", r.Name.Value)
 			}
