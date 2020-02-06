@@ -282,7 +282,7 @@ func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionR
 	return definitions, nil
 }
 
-// Returns metric namespaces for all configured target and resource groups
+// Returns metric namespaces for all configured target and resource groups.
 func (ac *AzureClient) getMetricNamespaces() (map[string]MetricNamespaceCollectionResponse, error) {
 	namespaces := make(map[string]MetricNamespaceCollectionResponse)
 	for _, target := range sc.C.Targets {
