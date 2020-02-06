@@ -316,7 +316,7 @@ func (ac *AzureClient) getAzureMetricDefinitionResponse(resource string, metricN
 
 	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, resource)
 	metricsTarget := fmt.Sprintf("%s/%s/providers/microsoft.insights/metricDefinitions?api-version=%s", sc.C.ResourceManagerURL, metricsResource, apiVersion)
-	if len(metricNamespace) > 0 {
+	if metricNamespace != "" {
 		metricsTarget = fmt.Sprintf("%s&metricnamespace=%s", metricsTarget, metricNamespace)
 	}
 
