@@ -73,6 +73,9 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 		metricName := strings.Replace(value.Name.Value, " ", "_", -1)
 		metricName = strings.ToLower(metricName + "_" + value.Unit)
 		metricName = strings.Replace(metricName, "/", "_per_", -1)
+		if rm.metricNamespace != "" {
+			metricName = strings.ToLower(rm.metricNamespace + "_" + metricName)
+		}
 		metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
 
 		if len(value.Timeseries) > 0 {

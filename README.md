@@ -102,6 +102,7 @@ resource_tags:
 By default, all aggregations are returned (`Total`, `Maximum`, `Average`, `Minimum`). It can be overridden per resource.
 
 The `metric_namespace` property is optional for all filtering types.
+When the metric namepace is specified, it will be added as a prefix of the metric name.
 It can be used to target [custom metrics](https://docs.microsoft.com/en-us/azure/azure-monitor/platform/metrics-custom-overview), such as [guest OS performance counters](https://docs.microsoft.com/en-us/azure/azure-monitor/platform/collect-custom-metrics-guestos-vm-classic).
 If not specified, the default metric namespace of the resource will apply.
 
