@@ -19,26 +19,6 @@ go get -u github.com/RobustPerception/azure_metrics_exporter
 
 Note that Azure imposes an [API read limit of 15,000 requests per hour](https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-manager-request-limits) so the number of metrics you're querying for should be proportional to your scrape interval.
 
-## Retrieving Metric definitions
-
-In order to get all the metric definitions for the resources specified in your configuration file, run the following:
-
-```bash
-./azure-metrics-exporter --list.definitions
-```
-
-This will print your resource id's application/service name along with a list of each of the available metric definitions that you can query for for that resource.
-
-## Retrieving Metric namespaces
-
-In order to get all the metric namespaces for the resources specified in your configuration file, run the following:
-
-```bash
-./azure-metrics-exporter --list.namespaces
-```
-
-This will print your resource id's application/service name along with a list of each of the available metric namespaces that you can query for for that resource.
-
 ## Exporter configuration
 
 This exporter requires a configuration file. By default, it will look for the azure.yml file in the CWD.
@@ -152,6 +132,26 @@ Name of the tag to be filtered against.
 Value of the tag to be filtered against.
 
 `resource_types`: optional list of types kept in the list of resources gathered by tag. If none are specified, then all the resources are kept. All defined metrics must exist for each processed resource.
+
+### Retrieving Metric definitions
+
+In order to get all the metric definitions for the resources specified in your configuration file, run the following:
+
+```bash
+./azure-metrics-exporter --list.definitions
+```
+
+This will print your resource id's application/service name along with a list of each of the available metric definitions that you can query for for that resource.
+
+### Retrieving Metric namespaces
+
+In order to get all the metric namespaces for the resources specified in your configuration file, run the following:
+
+```bash
+./azure-metrics-exporter --list.namespaces
+```
+
+This will print your resource id's application/service name along with a list of each of the available metric namespaces that you can query for for that resource.
 
 ## Prometheus configuration
 
