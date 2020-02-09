@@ -19,16 +19,6 @@ go get -u github.com/RobustPerception/azure_metrics_exporter
 
 Note that Azure imposes an [API read limit of 15,000 requests per hour](https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-manager-request-limits) so the number of metrics you're querying for should be proportional to your scrape interval.
 
-## Retrieving Metric definitions
-
-In order to get all the metric definitions for the resources specified in your configuration file, run the following:
-
-```bash
-./azure-metrics-exporter --list.definitions
-```
-
-This will print your resource id's application/service name along with a list of each of the available metric definitions that you can query for for that resource.
-
 ## Exporter configuration
 
 This exporter requires a configuration file. By default, it will look for the azure.yml file in the CWD.
@@ -83,6 +73,10 @@ targets:
     metrics:
     - name: "Http2xx"
     - name: "Http5xx"
+  - resource: "azure_resource_id"
+    metric_namespace: "Azure.VM.Windows.GuestMetrics"
+    metrics:
+    - name: 'Process\Thread Count'
 
 resource_groups:
   - resource_group: "webapps"
@@ -107,6 +101,10 @@ resource_tags:
 
 By default, all aggregations are returned (`Total`, `Maximum`, `Average`, `Minimum`). It can be overridden per resource.
 
+The `metric_namespace` property is optional for all filtering types.
+When the metric namespace is specified, it will be added as a prefix of the metric name.
+It can be used to target [custom metrics](https://docs.microsoft.com/en-us/azure/azure-monitor/platform/metrics-custom-overview), such as [guest OS performance counters](https://docs.microsoft.com/en-us/azure/azure-monitor/platform/collect-custom-metrics-guestos-vm-classic).
+If not specified, the default metric namespace of the resource will apply.
 
 ### Resource group filtering
 
@@ -135,6 +133,26 @@ Name of the tag to be filtered against.
 Value of the tag to be filtered against.
 
 `resource_types`: optional list of types kept in the list of resources gathered by tag. If none are specified, then all the resources are kept. All defined metrics must exist for each processed resource.
+
+### Retrieving Metric definitions
+
+In order to get all the metric definitions for the resources specified in your configuration file, run the following:
+
+```bash
+./azure-metrics-exporter --list.definitions
+```
+
+This will print your resource id's application/service name along with a list of each of the available metric definitions that you can query for for that resource.
+
+### Retrieving Metric namespaces
+
+In order to get all the metric namespaces for the resources specified in your configuration file, run the following:
+
+```bash
+./azure-metrics-exporter --list.namespaces
+```
+
+This will print your resource id's application/service name along with a list of each of the available metric namespaces that you can query for for that resource.
 
 ## Prometheus configuration
 

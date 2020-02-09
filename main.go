@@ -26,6 +26,7 @@ var (
 	configFile            = kingpin.Flag("config.file", "Azure exporter configuration file.").Default("azure.yml").String()
 	listenAddress         = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9276").String()
 	listMetricDefinitions = kingpin.Flag("list.definitions", "List available metric definitions for the given resources and exit.").Bool()
+	listMetricNamespaces  = kingpin.Flag("list.namespaces", "List available metric namespaces for the given resources and exit.").Bool()
 	invalidMetricChars    = regexp.MustCompile("[^a-zA-Z0-9_:]")
 	azureErrorDesc        = prometheus.NewDesc("azure_error", "Error collecting metrics", nil, nil)
 	batchSize             = 20
@@ -44,11 +45,12 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 type resourceMeta struct {
-	resourceID   string
-	resourceURL  string
-	metrics      string
-	aggregations []string
-	resource     AzureResource
+	resourceID      string
+	resourceURL     string
+	metricNamespace string
+	metrics         string
+	aggregations    []string
+	resource        AzureResource
 }
 
 func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta, httpStatusCode int, metricValueData AzureMetricValueResponse, publishedResources map[string]bool) {
@@ -71,6 +73,9 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 		metricName := strings.Replace(value.Name.Value, " ", "_", -1)
 		metricName = strings.ToLower(metricName + "_" + value.Unit)
 		metricName = strings.Replace(metricName, "/", "_per_", -1)
+		if rm.metricNamespace != "" {
+			metricName = strings.ToLower(rm.metricNamespace + "_" + metricName)
+		}
 		metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
 
 		if len(value.Timeseries) > 0 {
@@ -226,9 +231,10 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		}
 
 		rm.resourceID = target.Resource
+		rm.metricNamespace = target.MetricNamespace
 		rm.metrics = strings.Join(metrics, ",")
 		rm.aggregations = filterAggregations(target.Aggregations)
-		rm.resourceURL = resourceURLFrom(target.Resource, rm.metrics, rm.aggregations)
+		rm.resourceURL = resourceURLFrom(target.Resource, rm.metricNamespace, rm.metrics, rm.aggregations)
 		incompleteResources = append(incompleteResources, rm)
 	}
 
@@ -250,9 +256,10 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		for _, f := range filteredResources {
 			var rm resourceMeta
 			rm.resourceID = f.ID
+			rm.metricNamespace = resourceGroup.MetricNamespace
 			rm.metrics = metricsStr
 			rm.aggregations = filterAggregations(resourceGroup.Aggregations)
-			rm.resourceURL = resourceURLFrom(f.ID, rm.metrics, rm.aggregations)
+			rm.resourceURL = resourceURLFrom(f.ID, rm.metricNamespace, rm.metrics, rm.aggregations)
 			rm.resource = f
 			resources = append(resources, rm)
 		}
@@ -277,9 +284,10 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		for _, f := range filteredResources {
 			var rm resourceMeta
 			rm.resourceID = f.ID
+			rm.metricNamespace = resourceTag.MetricNamespace
 			rm.metrics = metricsStr
 			rm.aggregations = filterAggregations(resourceTag.Aggregations)
-			rm.resourceURL = resourceURLFrom(f.ID, rm.metrics, rm.aggregations)
+			rm.resourceURL = resourceURLFrom(f.ID, rm.metricNamespace, rm.metrics, rm.aggregations)
 			incompleteResources = append(incompleteResources, rm)
 		}
 	}
@@ -323,9 +331,25 @@ func main() {
 		}
 
 		for k, v := range results {
-			log.Printf("Resource: %s\n\nAvailable Metrics:\n", strings.Split(k, "/")[6])
+			log.Printf("Resource: %s\n\nAvailable Metrics:\n", k)
 			for _, r := range v.MetricDefinitionResponses {
 				log.Printf("- %s\n", r.Name.Value)
+			}
+		}
+		os.Exit(0)
+	}
+
+	// Print list of available metric namespace for each resource to console if specified.
+	if *listMetricNamespaces {
+		results, err := ac.getMetricNamespaces()
+		if err != nil {
+			log.Fatalf("Failed to fetch metric namespaces: %v", err)
+		}
+
+		for k, v := range results {
+			log.Printf("Resource: %s\n\nAvailable namespaces:\n", k)
+			for _, namespace := range v.MetricNamespaceCollection {
+				log.Printf("- %s\n", namespace.Properties.MetricNamespaceName)
 			}
 		}
 		os.Exit(0)

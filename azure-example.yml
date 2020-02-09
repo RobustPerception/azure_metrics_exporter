@@ -16,6 +16,10 @@ targets:
     metrics:
       - name: "Http2xx"
       - name: "Http5xx"
+  - resource: "/resourceGroups/vm-group/providers/Microsoft.Compute/virtualMachines/vm"
+    metric_namespace: "Azure.VM.Windows.GuestMetrics"
+    metrics:
+    - name: 'Process\Thread Count'
 
 resource_groups:
   - resource_group: "webapps"

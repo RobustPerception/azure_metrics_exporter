@@ -45,6 +45,21 @@ type metricDefinitionResponse struct {
 	Unit                   string `json:"unit"`
 }
 
+// MetricNamespaceCollectionResponse represents metric namespace response for a given resource from Azure.
+type MetricNamespaceCollectionResponse struct {
+	MetricNamespaceCollection []metricNamespaceResponse `json:"value"`
+}
+
+type metricNamespaceResponse struct {
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Type           string `json:"type"`
+	Classification string `json:"classification"`
+	Properties     struct {
+		MetricNamespaceName string `json:"metricNamespaceName"`
+	} `json:"properties"`
+}
+
 // AzureMetricValueResponse represents a metric value response for a given metric definition.
 type AzureMetricValueResponse struct {
 	Value []struct {
@@ -235,11 +250,15 @@ func (ac *AzureClient) getAccessToken() error {
 func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionResponse, error) {
 	definitions := make(map[string]AzureMetricDefinitionResponse)
 	for _, target := range sc.C.Targets {
-		def, err := ac.getAzureMetricDefinitionResponse(target.Resource)
+		def, err := ac.getAzureMetricDefinitionResponse(target.Resource, target.MetricNamespace)
 		if err != nil {
 			return nil, err
 		}
-		definitions[target.Resource] = *def
+		defKey := target.Resource
+		if len(target.MetricNamespace) > 0 {
+			defKey = fmt.Sprintf("%s (Metric namespace: %s)", defKey, target.MetricNamespace)
+		}
+		definitions[defKey] = *def
 	}
 
 	for _, resourceGroup := range sc.C.ResourceGroups {
@@ -249,22 +268,58 @@ func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionR
 				resourceGroup.ResourceGroup, resourceGroup.ResourceTypes, err)
 		}
 		for _, resource := range resources {
-			def, err := ac.getAzureMetricDefinitionResponse(resource.ID)
+			def, err := ac.getAzureMetricDefinitionResponse(resource.ID, resourceGroup.MetricNamespace)
 			if err != nil {
 				return nil, err
 			}
-			definitions[resource.ID] = *def
+			defKey := resource.ID
+			if len(resourceGroup.MetricNamespace) > 0 {
+				defKey = fmt.Sprintf("%s (Metric namespace: %s)", defKey, resourceGroup.MetricNamespace)
+			}
+			definitions[defKey] = *def
 		}
 	}
 	return definitions, nil
 }
 
+// Returns metric namespaces for all configured target and resource groups.
+func (ac *AzureClient) getMetricNamespaces() (map[string]MetricNamespaceCollectionResponse, error) {
+	namespaces := make(map[string]MetricNamespaceCollectionResponse)
+	for _, target := range sc.C.Targets {
+		namespaceCollection, err := ac.getMetricNamespaceCollectionResponse(target.Resource)
+		if err != nil {
+			return nil, err
+		}
+		namespaces[target.Resource] = *namespaceCollection
+	}
+
+	for _, resourceGroup := range sc.C.ResourceGroups {
+		resources, err := ac.filteredListFromResourceGroup(resourceGroup)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get resources for resource group %s and resource types %s: %v",
+				resourceGroup.ResourceGroup, resourceGroup.ResourceTypes, err)
+		}
+		for _, resource := range resources {
+			namespaceCollection, err := ac.getMetricNamespaceCollectionResponse(resource.ID)
+			if err != nil {
+				return nil, err
+			}
+			namespaces[resource.ID] = *namespaceCollection
+		}
+	}
+	return namespaces, nil
+}
+
 // Returns AzureMetricDefinitionResponse for a given resource
-func (ac *AzureClient) getAzureMetricDefinitionResponse(resource string) (*AzureMetricDefinitionResponse, error) {
+func (ac *AzureClient) getAzureMetricDefinitionResponse(resource string, metricNamespace string) (*AzureMetricDefinitionResponse, error) {
 	apiVersion := "2018-01-01"
 
 	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, resource)
 	metricsTarget := fmt.Sprintf("%s/%s/providers/microsoft.insights/metricDefinitions?api-version=%s", sc.C.ResourceManagerURL, metricsResource, apiVersion)
+	if metricNamespace != "" {
+		metricsTarget = fmt.Sprintf("%s&metricnamespace=%s", metricsTarget, url.QueryEscape(metricNamespace))
+	}
+
 	req, err := http.NewRequest("GET", metricsTarget, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
@@ -289,6 +344,38 @@ func (ac *AzureClient) getAzureMetricDefinitionResponse(resource string) (*Azure
 		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
 	return def, nil
+}
+
+// Returns MetricNamespaceCollectionResponse for a given resource
+func (ac *AzureClient) getMetricNamespaceCollectionResponse(resource string) (*MetricNamespaceCollectionResponse, error) {
+	apiVersion := "2017-12-01-preview"
+
+	nsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, resource)
+	nsTarget := fmt.Sprintf("%s/%s/providers/microsoft.insights/metricNamespaces?api-version=%s", sc.C.ResourceManagerURL, nsResource, apiVersion)
+	req, err := http.NewRequest("GET", nsTarget, nil)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating HTTP request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
+	resp, err := ac.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Error: %v", err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("Error reading body of response: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Error: %v", string(body))
+	}
+
+	namespaceCollection := &MetricNamespaceCollectionResponse{}
+	err = json.Unmarshal(body, namespaceCollection)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshalling response body: %v", err)
+	}
+	return namespaceCollection, nil
 }
 
 // Returns resource list resolved and filtered from resource_groups configuration
@@ -497,7 +584,7 @@ type batchRequest struct {
 	Method      string `json:"httpMethod"`
 }
 
-func resourceURLFrom(resource string, metricNames string, aggregations []string) string {
+func resourceURLFrom(resource string, metricNamespace string, metricNames string, aggregations []string) string {
 	apiVersion := "2018-01-01"
 
 	path := fmt.Sprintf(
@@ -511,6 +598,9 @@ func resourceURLFrom(resource string, metricNames string, aggregations []string)
 	values := url.Values{}
 	if metricNames != "" {
 		values.Add("metricnames", metricNames)
+	}
+	if metricNamespace != "" {
+		values.Add("metricnamespace", metricNamespace)
 	}
 	filtered := filterAggregations(aggregations)
 	values.Add("aggregation", strings.Join(filtered, ","))
