@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/RobustPerception/azure_metrics_exporter/config"
 
@@ -82,36 +83,43 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 			metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
 			labels := CreateResourceLabels(rm.resourceURL)
 
+			layout := "2006-01-02T15:04:05Z"
+			t, err := time.Parse(layout, value.Timeseries[0].Data[0].TimeStamp)
+
+			if err != nil {
+				fmt.Println(err)
+			}
+
 			if hasAggregation(rm.aggregations, "Total") {
-				ch <- prometheus.MustNewConstMetric(
+				ch <- prometheus.NewMetricWithTimestamp(t, prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Total,
-				)
+				))
 			}
 
 			if hasAggregation(rm.aggregations, "Average") {
-				ch <- prometheus.MustNewConstMetric(
+				ch <- prometheus.NewMetricWithTimestamp(t,prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_average", metricName+"_average", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Average,
-				)
+				))
 			}
 
 			if hasAggregation(rm.aggregations, "Minimum") {
-				ch <- prometheus.MustNewConstMetric(
+				ch <- prometheus.NewMetricWithTimestamp(t,prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_min", metricName+"_min", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Minimum,
-				)
+				))
 			}
 
 			if hasAggregation(rm.aggregations, "Maximum") {
-				ch <- prometheus.MustNewConstMetric(
+				ch <- prometheus.NewMetricWithTimestamp(t,prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_max", metricName+"_max", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Maximum,
-				)
+				))
 			}
 		}
 	}
