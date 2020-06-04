@@ -139,7 +139,7 @@ Value of the tag to be filtered against.
 In order to get all the metric definitions for the resources specified in your configuration file, run the following:
 
 ```bash
-./azure-metrics-exporter --list.definitions
+./azure_metrics_exporter --list.definitions
 ```
 
 This will print your resource id's application/service name along with a list of each of the available metric definitions that you can query for for that resource.
@@ -149,7 +149,7 @@ This will print your resource id's application/service name along with a list of
 In order to get all the metric namespaces for the resources specified in your configuration file, run the following:
 
 ```bash
-./azure-metrics-exporter --list.namespaces
+./azure_metrics_exporter --list.namespaces
 ```
 
 This will print your resource id's application/service name along with a list of each of the available metric namespaces that you can query for for that resource.
