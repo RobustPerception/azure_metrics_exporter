@@ -12,6 +12,7 @@ import (
 
 var (
 	// resource component positions in a ResourceURL
+	azureSubscriptionPosition  = 2
 	resourceGroupPosition      = 4
 	resourceNamePosition       = 8
 	subResourceNamePosition    = 10
@@ -46,7 +47,9 @@ func CreateResourceLabels(resourceURL string) map[string]string {
 	labels := make(map[string]string)
 	resource := strings.Split(resourceURL, "/")
 
+	labels["subscription"] = resource[azureSubscriptionPosition]
 	labels["resource_group"] = resource[resourceGroupPosition]
+	labels["resource_type"] = resource[resourceTypePrefixPosition]
 	labels["resource_name"] = resource[resourceNamePosition]
 	if len(resource) > 13 {
 		labels["sub_resource_name"] = resource[subResourceNamePosition]
