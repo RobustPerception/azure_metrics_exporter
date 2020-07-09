@@ -155,7 +155,6 @@ type ResourceTag struct {
 	ResourceTagName  string   `yaml:"resource_tag_name"`
 	ResourceTagValue string   `yaml:"resource_tag_value"`
 	MetricNamespace  string   `yaml:"metric_namespace"`
-	ResourceName     string   `yaml:"resource_name,omitempty"`
 	ResourceTypes    []string `yaml:"resource_types"`
 	Metrics          []Metric `yaml:"metrics"`
 	Labels           []Label  `yaml:"labels,omitempty"`
