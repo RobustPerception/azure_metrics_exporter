@@ -47,9 +47,9 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 type resourceMeta struct {
 	resourceID      string
 	resourceURL     string
-	resourceName    string
 	metricNamespace string
 	metrics         string
+	labels          []config.Label
 	aggregations    []string
 	resource        AzureResource
 }
@@ -74,23 +74,18 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 		metricName := strings.Replace(value.Name.Value, " ", "_", -1)
 		metricName = strings.ToLower(metricName + "_" + value.Unit)
 		metricName = strings.Replace(metricName, "/", "_per_", -1)
-		metricHelp := value.Name.LocalizedValue
 		if rm.metricNamespace != "" {
 			metricName = strings.ToLower(rm.metricNamespace + "_" + metricName)
-		}
-		if rm.resourceName != "" {
-			metricHelp = rm.resourceName + " " + metricHelp
-			metricName = strings.ToLower(strings.ToLower(rm.resourceName) + "_" + metricName)
 		}
 		metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
 
 		if len(value.Timeseries) > 0 {
 			metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
-			labels := CreateResourceLabels(rm.resourceURL)
+			labels := CreateResourceLabels(rm)
 
 			if hasAggregation(rm.aggregations, "Total") {
 				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_total", metricHelp+" Total", nil, labels),
+					prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Total,
 				)
@@ -98,7 +93,7 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 
 			if hasAggregation(rm.aggregations, "Average") {
 				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_average", metricHelp+" Average", nil, labels),
+					prometheus.NewDesc(metricName+"_average", metricName+"_average", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Average,
 				)
@@ -106,7 +101,7 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 
 			if hasAggregation(rm.aggregations, "Minimum") {
 				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_min", metricHelp+" Min", nil, labels),
+					prometheus.NewDesc(metricName+"_min", metricName+"_min", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Minimum,
 				)
@@ -114,7 +109,7 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 
 			if hasAggregation(rm.aggregations, "Maximum") {
 				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_max", metricHelp+" Max", nil, labels),
+					prometheus.NewDesc(metricName+"_max", metricName+"_max", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Maximum,
 				)
@@ -237,9 +232,9 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		}
 
 		rm.resourceID = target.Resource
-		rm.resourceName = target.ResourceName
 		rm.metricNamespace = target.MetricNamespace
 		rm.metrics = strings.Join(metrics, ",")
+		rm.labels = target.Labels
 		rm.aggregations = filterAggregations(target.Aggregations)
 		rm.resourceURL = resourceURLFrom(target.Resource, rm.metricNamespace, rm.metrics, rm.aggregations)
 		incompleteResources = append(incompleteResources, rm)
@@ -263,9 +258,9 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		for _, f := range filteredResources {
 			var rm resourceMeta
 			rm.resourceID = f.ID
-			rm.resourceName = resourceGroup.ResourceName
 			rm.metricNamespace = resourceGroup.MetricNamespace
 			rm.metrics = metricsStr
+			rm.labels = resourceGroup.Labels
 			rm.aggregations = filterAggregations(resourceGroup.Aggregations)
 			rm.resourceURL = resourceURLFrom(f.ID, rm.metricNamespace, rm.metrics, rm.aggregations)
 			rm.resource = f
@@ -292,9 +287,9 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		for _, f := range filteredResources {
 			var rm resourceMeta
 			rm.resourceID = f.ID
-			rm.resourceName = resourceTag.ResourceName
 			rm.metricNamespace = resourceTag.MetricNamespace
 			rm.metrics = metricsStr
+			rm.labels = resourceTag.Labels
 			rm.aggregations = filterAggregations(resourceTag.Aggregations)
 			rm.resourceURL = resourceURLFrom(f.ID, rm.metricNamespace, rm.metrics, rm.aggregations)
 			incompleteResources = append(incompleteResources, rm)

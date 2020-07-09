@@ -128,9 +128,9 @@ type Credentials struct {
 // Target represents Azure target resource and its associated metric definitions
 type Target struct {
 	Resource        string   `yaml:"resource"`
-	ResourceName    string   `yaml:"resource_name,omitempty"`
 	MetricNamespace string   `yaml:"metric_namespace"`
 	Metrics         []Metric `yaml:"metrics"`
+	Labels          []Label  `yaml:"labels,omitempty"`
 	Aggregations    []string `yaml:"aggregations"`
 
 	XXX map[string]interface{} `yaml:",inline"`
@@ -140,11 +140,11 @@ type Target struct {
 type ResourceGroup struct {
 	ResourceGroup         string   `yaml:"resource_group"`
 	MetricNamespace       string   `yaml:"metric_namespace"`
-	ResourceName          string   `yaml:"resource_name,omitempty"`
 	ResourceTypes         []string `yaml:"resource_types"`
 	ResourceNameIncludeRe []Regexp `yaml:"resource_name_include_re"`
 	ResourceNameExcludeRe []Regexp `yaml:"resource_name_exclude_re"`
 	Metrics               []Metric `yaml:"metrics"`
+	Labels                []Label  `yaml:"labels,omitempty"`
 	Aggregations          []string `yaml:"aggregations"`
 
 	XXX map[string]interface{} `yaml:",inline"`
@@ -158,6 +158,7 @@ type ResourceTag struct {
 	ResourceName     string   `yaml:"resource_name,omitempty"`
 	ResourceTypes    []string `yaml:"resource_types"`
 	Metrics          []Metric `yaml:"metrics"`
+	Labels           []Label  `yaml:"labels,omitempty"`
 	Aggregations     []string `yaml:"aggregations"`
 
 	XXX map[string]interface{} `yaml:",inline"`
@@ -166,6 +167,14 @@ type ResourceTag struct {
 // Metric defines metric name
 type Metric struct {
 	Name string `yaml:"name"`
+
+	XXX map[string]interface{} `yaml:",inline"`
+}
+
+// Label defines additional metric labels
+type Label struct {
+	Name string `yaml:"name"`
+	Value string `yaml:"value"`
 
 	XXX map[string]interface{} `yaml:",inline"`
 }
@@ -213,6 +222,18 @@ func (s *Credentials) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
 func (s *Metric) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type plain Metric
+	if err := unmarshal((*plain)(s)); err != nil {
+		return err
+	}
+	if err := checkOverflow(s.XXX, "config"); err != nil {
+		return err
+	}
+	return nil
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (s *Label) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type plain Label
 	if err := unmarshal((*plain)(s)); err != nil {
 		return err
 	}

@@ -77,6 +77,9 @@ targets:
     metric_namespace: "Azure.VM.Windows.GuestMetrics"
     metrics:
     - name: 'Process\Thread Count'
+    labels:
+    - name: "label"
+      value: "value"
 
 resource_groups:
   - resource_group: "webapps"
@@ -88,6 +91,9 @@ resource_groups:
     - "testvm12"
     metrics:
     - name: "CPU Credits Consumed"
+    labels:
+    - name: "label"
+      value: "value"
 
 resource_tags:
   - resource_tag_name: "group"
@@ -96,7 +102,9 @@ resource_tags:
       - "Microsoft.Compute/virtualMachines"
     metrics:
       - name: "CPU Credits Consumed"
-
+    labels:
+    - name: "label"
+      value: "value"
 ```
 
 By default, all aggregations are returned (`Total`, `Maximum`, `Average`, `Minimum`). It can be overridden per resource.

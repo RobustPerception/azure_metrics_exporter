@@ -43,17 +43,21 @@ func GetTimes() (string, string) {
 }
 
 // CreateResourceLabels - Returns resource labels for a given resource URL.
-func CreateResourceLabels(resourceURL string) map[string]string {
+func CreateResourceLabels(rm resourceMeta) map[string]string {
 	labels := make(map[string]string)
-	resource := strings.Split(resourceURL, "/")
+	resource := strings.Split(rm.resourceURL, "/")
 
-	labels["subscription"] = resource[azureSubscriptionPosition]
 	labels["resource_group"] = resource[resourceGroupPosition]
-	labels["resource_type"] = resource[resourceTypePrefixPosition]
+	labels["resource_type"] = resource[resourceTypePrefixPosition] + "/" + resource[resourceTypePosition]
 	labels["resource_name"] = resource[resourceNamePosition]
 	if len(resource) > 13 {
 		labels["sub_resource_name"] = resource[subResourceNamePosition]
 	}
+
+	for _, label := range rm.labels {
+		labels[label.Name] = label.Value
+	}
+
 	return labels
 }
 
@@ -96,7 +100,7 @@ func CreateAllResourceLabelsFrom(rm resourceMeta) map[string]string {
 	// Their tag values are used as label keys.
 	// To keep coherence with the metric labels, we create "resource_group",  "resource_name"
 	// and "sub_resource_name" by invoking CreateResourceLabels.
-	resourceLabels := CreateResourceLabels(rm.resourceURL)
+	resourceLabels := CreateResourceLabels(rm)
 	for k, v := range resourceLabels {
 		labels[k] = v
 	}
