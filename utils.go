@@ -48,6 +48,7 @@ func CreateResourceLabels(resourceURL string) map[string]string {
 
 	labels["resource_group"] = resource[resourceGroupPosition]
 	labels["resource_name"] = resource[resourceNamePosition]
+	labels["resource_type"] = resource[resourceTypePrefixPosition] + "/" + resource[resourceTypePosition]
 	if len(resource) > 13 {
 		labels["sub_resource_name"] = resource[subResourceNamePosition]
 	}
