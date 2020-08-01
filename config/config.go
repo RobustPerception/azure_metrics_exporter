@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -45,8 +46,24 @@ func (sc *SafeConfig) ReloadConfig(confFile string) (err error) {
 		return fmt.Errorf("Error parsing config file: %s", err)
 	}
 
+	if sc.C.Credentials.SubscriptionID == "" {
+		sc.C.Credentials.SubscriptionID = os.Getenv("SUBSCRIPTION_ID")
+	}
+
+	if sc.C.Credentials.ClientID == "" {
+		sc.C.Credentials.ClientID = os.Getenv("CLIENT_ID")
+	}
+
+	if sc.C.Credentials.ClientSecret == "" {
+		sc.C.Credentials.ClientSecret = os.Getenv("CLIENT_SECRET")
+	}
+
+	if sc.C.Credentials.TenantID == "" {
+		sc.C.Credentials.TenantID = os.Getenv("TENANT_ID")
+	}
+
 	if err := c.Validate(); err != nil {
-		return fmt.Errorf("Error validating config file: %s", err)
+		return fmt.Errorf("Error validating config: %s", err)
 	}
 
 	sc.Lock()
