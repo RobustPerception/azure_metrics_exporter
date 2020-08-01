@@ -50,6 +50,7 @@ type resourceMeta struct {
 	metricNamespace string
 	metrics         string
 	aggregations    []string
+	labels          []config.Label
 	resource        AzureResource
 }
 
@@ -80,7 +81,7 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 
 		if len(value.Timeseries) > 0 {
 			metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
-			labels := CreateResourceLabels(rm.resourceURL)
+			labels := CreateResourceLabels(rm)
 
 			if hasAggregation(rm.aggregations, "Total") {
 				ch <- prometheus.MustNewConstMetric(
@@ -235,6 +236,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		rm.metrics = strings.Join(metrics, ",")
 		rm.aggregations = filterAggregations(target.Aggregations)
 		rm.resourceURL = resourceURLFrom(target.Resource, rm.metricNamespace, rm.metrics, rm.aggregations)
+		rm.labels = append(sc.C.CustomLabels, target.CustomLabels...)
 		incompleteResources = append(incompleteResources, rm)
 	}
 

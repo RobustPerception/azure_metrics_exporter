@@ -59,12 +59,18 @@ credentials:
   client_id: <secret>
   client_secret: <secret>
   tenant_id: <secret>
+custom_labels:
+  - name: cost_center
+    value: 12345s
 
 targets:
   - resource: "azure_resource_id"
     metrics:
     - name: "BytesReceived"
     - name: "BytesSent"
+    custom_labels:
+    - name: experimental
+      value: true
   - resource: "azure_resource_id"
     aggregations:
     - Minimum
@@ -105,6 +111,8 @@ The `metric_namespace` property is optional for all filtering types.
 When the metric namespace is specified, it will be added as a prefix of the metric name.
 It can be used to target [custom metrics](https://docs.microsoft.com/en-us/azure/azure-monitor/platform/metrics-custom-overview), such as [guest OS performance counters](https://docs.microsoft.com/en-us/azure/azure-monitor/platform/collect-custom-metrics-guestos-vm-classic).
 If not specified, the default metric namespace of the resource will apply.
+
+`custom_tags` specify labels that will be present in all metrics
 
 ### Resource group filtering
 

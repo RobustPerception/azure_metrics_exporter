@@ -42,15 +42,21 @@ func GetTimes() (string, string) {
 }
 
 // CreateResourceLabels - Returns resource labels for a given resource URL.
-func CreateResourceLabels(resourceURL string) map[string]string {
+func CreateResourceLabels(rm resourceMeta) map[string]string {
 	labels := make(map[string]string)
-	resource := strings.Split(resourceURL, "/")
+	resource := strings.Split(rm.resourceURL, "/")
 
 	labels["resource_group"] = resource[resourceGroupPosition]
 	labels["resource_name"] = resource[resourceNamePosition]
 	if len(resource) > 13 {
 		labels["sub_resource_name"] = resource[subResourceNamePosition]
 	}
+
+	for _, label := range rm.labels {
+		labelName := "custom_tag_" + cleanLabel(label.Name)
+		labels[labelName] = label.Value
+	}
+
 	return labels
 }
 
@@ -73,9 +79,7 @@ func CreateAllResourceLabelsFrom(rm resourceMeta) map[string]string {
 	labels := make(map[string]string)
 
 	for k, v := range rm.resource.Tags {
-		k = strings.ToLower(k)
-		k = "tag_" + k
-		k = invalidLabelChars.ReplaceAllString(k, "_")
+		k = "tag_" + cleanLabel(k)
 		labels[k] = v
 	}
 
@@ -93,11 +97,18 @@ func CreateAllResourceLabelsFrom(rm resourceMeta) map[string]string {
 	// Their tag values are used as label keys.
 	// To keep coherence with the metric labels, we create "resource_group",  "resource_name"
 	// and "sub_resource_name" by invoking CreateResourceLabels.
-	resourceLabels := CreateResourceLabels(rm.resourceURL)
+	resourceLabels := CreateResourceLabels(rm)
 	for k, v := range resourceLabels {
 		labels[k] = v
 	}
 	return labels
+}
+
+func cleanLabel(label string) string {
+	label = strings.ToLower(label)
+	label = invalidLabelChars.ReplaceAllString(label, "_")
+	label = strings.Trim(label, "_")
+	return label
 }
 
 func hasAggregation(aggregations []string, aggregation string) bool {

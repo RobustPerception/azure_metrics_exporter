@@ -15,6 +15,7 @@ type Config struct {
 	ActiveDirectoryAuthorityURL string          `yaml:"active_directory_authority_url"`
 	ResourceManagerURL          string          `yaml:"resource_manager_url"`
 	Credentials                 Credentials     `yaml:"credentials"`
+	CustomLabels                []Label         `yaml:"custom_labels"`
 	Targets                     []Target        `yaml:"targets"`
 	ResourceGroups              []ResourceGroup `yaml:"resource_groups"`
 	ResourceTags                []ResourceTag   `yaml:"resource_tags"`
@@ -148,6 +149,7 @@ type Target struct {
 	Resource        string   `yaml:"resource"`
 	MetricNamespace string   `yaml:"metric_namespace"`
 	Metrics         []Metric `yaml:"metrics"`
+	CustomLabels    []Label  `yaml:"custom_labels"`
 	Aggregations    []string `yaml:"aggregations"`
 
 	XXX map[string]interface{} `yaml:",inline"`
@@ -161,6 +163,7 @@ type ResourceGroup struct {
 	ResourceNameIncludeRe []Regexp `yaml:"resource_name_include_re"`
 	ResourceNameExcludeRe []Regexp `yaml:"resource_name_exclude_re"`
 	Metrics               []Metric `yaml:"metrics"`
+	CustomLabels          []Label  `yaml:"custom_labels"`
 	Aggregations          []string `yaml:"aggregations"`
 
 	XXX map[string]interface{} `yaml:",inline"`
@@ -173,7 +176,16 @@ type ResourceTag struct {
 	MetricNamespace  string   `yaml:"metric_namespace"`
 	ResourceTypes    []string `yaml:"resource_types"`
 	Metrics          []Metric `yaml:"metrics"`
+	CustomLabels     []Label  `yaml:"custom_labels"`
 	Aggregations     []string `yaml:"aggregations"`
+
+	XXX map[string]interface{} `yaml:",inline"`
+}
+
+// Label is a tuple that defines a preometheus label
+type Label struct {
+	Name  string `yaml:"name"`
+	Value string `yaml:"value"`
 
 	XXX map[string]interface{} `yaml:",inline"`
 }
