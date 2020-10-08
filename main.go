@@ -338,7 +338,9 @@ func main() {
 		for k, v := range results {
 			log.Printf("Resource: %s\n\nAvailable Metrics:\n", k)
 			for _, r := range v.MetricDefinitionResponses {
-				log.Printf("- %s\n", r.Name.Value)
+				log.Printf("\n\nMetric:\n")
+				log.Printf("- %s", r.Name.Value)
+				log.Printf("\nDimensions:\n")
 				for _, d := range r.Dimensions {
 					log.Printf("- %s\n", d.Value)
 				}
