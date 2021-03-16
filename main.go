@@ -78,7 +78,7 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 		}
 		metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
 
-		val := float64(0)
+		var val float64
 		if len(value.Timeseries) > 0 {
 			metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
 			labels := CreateResourceLabels(rm.resourceURL)
@@ -122,8 +122,6 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 
 func getAliasForMetricName(metricName string) string {
 	switch metricName {
-	default:
-		return metricName
 	// Our common metrics for nodes.
 	case "cpu_percent_percent_average":
 		return "node_cpu_average"
@@ -140,6 +138,8 @@ func getAliasForMetricName(metricName string) string {
 		return "azure_storage_percent_average"
 	case "memory_percent_percent_average":
 		return "azure_memory_percent_average"
+	default:
+		return metricName
 	}
 }
 
