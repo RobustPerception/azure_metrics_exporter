@@ -78,41 +78,34 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 		}
 		metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
 
+		val := float64(0)
 		if len(value.Timeseries) > 0 {
 			metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
 			labels := CreateResourceLabels(rm.resourceURL)
 
 			if hasAggregation(rm.aggregations, "Total") {
-				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
-					prometheus.GaugeValue,
-					metricValue.Total,
-				)
+				metricName = fmt.Sprintf("%s_total", metricName)
+				val = metricValue.Total
 			}
-
 			if hasAggregation(rm.aggregations, "Average") {
-				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_average", metricName+"_average", nil, labels),
-					prometheus.GaugeValue,
-					metricValue.Average,
-				)
+				metricName = fmt.Sprintf("%s_average", metricName)
+				val = metricValue.Average
 			}
-
 			if hasAggregation(rm.aggregations, "Minimum") {
-				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_min", metricName+"_min", nil, labels),
-					prometheus.GaugeValue,
-					metricValue.Minimum,
-				)
+				metricName = fmt.Sprintf("%s_min", metricName)
+				val = metricValue.Minimum
+			}
+			if hasAggregation(rm.aggregations, "Minimum") {
+				metricName = fmt.Sprintf("%s_max", metricName)
+				val = metricValue.Maximum
 			}
 
-			if hasAggregation(rm.aggregations, "Maximum") {
-				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_max", metricName+"_max", nil, labels),
-					prometheus.GaugeValue,
-					metricValue.Maximum,
-				)
-			}
+			alias := getAliasForMetricName(metricName)
+			ch <- prometheus.MustNewConstMetric(
+				prometheus.NewDesc(alias, alias, nil, labels),
+				prometheus.GaugeValue,
+				val,
+			)
 		}
 	}
 
@@ -124,6 +117,29 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 			1,
 		)
 		publishedResources[rm.resource.ID] = true
+	}
+}
+
+func getAliasForMetricName(metricName string) string {
+	switch metricName {
+	default:
+		return metricName
+	// Our common metrics for nodes.
+	case "cpu_percent_percent_average":
+		return "node_cpu_average"
+	case "network_bytes_egress_bytes_average":
+		return "node_network_transmit_bytes_total"
+	case "network_bytes_ingress_bytes_average":
+		return "node_network_receive_bytes_total"
+	case "storage_limit_bytes_average":
+		return "node_filesystem_size_bytes"
+	// Unique metrics for Azure.
+	case "storage_used_bytes_average":
+		return "azure_storage_used_bytes_average"
+	case "storage_percent_percent_average":
+		return "azure_storage_percent_average"
+	case "memory_percent_percent_average":
+		return "azure_memory_percent_average"
 	}
 }
 
