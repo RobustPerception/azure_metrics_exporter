@@ -149,6 +149,8 @@ type Target struct {
 	MetricNamespace string   `yaml:"metric_namespace"`
 	Metrics         []Metric `yaml:"metrics"`
 	Aggregations    []string `yaml:"aggregations"`
+	RangeSeconds    *int     `yaml:"range_seconds"`
+	OffsetSeconds   *int     `yaml:"offset_seconds"`
 
 	XXX map[string]interface{} `yaml:",inline"`
 }
@@ -162,6 +164,8 @@ type ResourceGroup struct {
 	ResourceNameExcludeRe []Regexp `yaml:"resource_name_exclude_re"`
 	Metrics               []Metric `yaml:"metrics"`
 	Aggregations          []string `yaml:"aggregations"`
+	RangeSeconds          *int     `yaml:"range_seconds"`
+	OffsetSeconds         *int     `yaml:"offset_seconds"`
 
 	XXX map[string]interface{} `yaml:",inline"`
 }
@@ -174,6 +178,8 @@ type ResourceTag struct {
 	ResourceTypes    []string `yaml:"resource_types"`
 	Metrics          []Metric `yaml:"metrics"`
 	Aggregations     []string `yaml:"aggregations"`
+	RangeSeconds     *int     `yaml:"range_seconds"`
+	OffsetSeconds    *int     `yaml:"offset_seconds"`
 
 	XXX map[string]interface{} `yaml:",inline"`
 }

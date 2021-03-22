@@ -31,13 +31,22 @@ func PrintPrettyJSON(input map[string]interface{}) {
 }
 
 // GetTimes - Returns the endTime and startTime used for querying Azure Metrics API
-func GetTimes() (string, string) {
+func GetTimes(rangeSeconds, offsetSeconds *int) (string, string) {
 	// Make sure we are using UTC
 	now := time.Now().UTC()
 
+	if offsetSeconds == nil {
+		offsetSecondsDefault := 3 * 60
+		offsetSeconds = &offsetSecondsDefault
+	}
+	if rangeSeconds == nil {
+		rangeSecondsDefault := 60
+		rangeSeconds = &rangeSecondsDefault
+	}
+
 	// Use query delay of 3 minutes when querying for latest metric data
-	endTime := now.Add(time.Minute * time.Duration(-3)).Format(time.RFC3339)
-	startTime := now.Add(time.Minute * time.Duration(-4)).Format(time.RFC3339)
+	endTime := now.Add(time.Duration(-*offsetSeconds) * time.Second).Format(time.RFC3339)
+	startTime := now.Add(time.Duration(-*rangeSeconds-*offsetSeconds) * time.Second).Format(time.RFC3339)
 	return endTime, startTime
 }
 

@@ -584,7 +584,7 @@ type batchRequest struct {
 	Method      string `json:"httpMethod"`
 }
 
-func resourceURLFrom(resource string, metricNamespace string, metricNames string, aggregations []string) string {
+func resourceURLFrom(resource string, metricNamespace string, metricNames string, aggregations []string, rangeSeconds, offsetSeconds *int) string {
 	apiVersion := "2018-01-01"
 
 	path := fmt.Sprintf(
@@ -593,7 +593,7 @@ func resourceURLFrom(resource string, metricNamespace string, metricNames string
 		resource,
 	)
 
-	endTime, startTime := GetTimes()
+	endTime, startTime := GetTimes(rangeSeconds, offsetSeconds)
 
 	values := url.Values{}
 	if metricNames != "" {
