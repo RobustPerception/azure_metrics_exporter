@@ -21,7 +21,7 @@ Note that Azure imposes an [API read limit of 15,000 requests per hour](https://
 
 ## Exporter configuration
 
-This exporter requires a configuration file. By default, it will look for the azure.yml file in the CWD.
+This exporter requires a configuration file containing the metrics to be collected. By default, it will look for the `azure.yml` file in the CWD, or the file specified via `--config.file=/path/to/azure.yml`.
 
 ### Azure account requirements
 
@@ -34,6 +34,8 @@ This exporter reads metrics from an existing Azure subscription with these requi
 * If using managed identities:
   * The VM running the azure-metrics-exporter must have reading permission to Azure Monitor (e.g., Subscriptions -> your_subscription -> Access control (IAM) -> Role assignments -> Add -> Add role assignment -> Role : "Monitoring Reader", Select:  your_vm)
   * Only `subscription_id` will be needed in your credentials configuration.
+
+Any credentials may be provided under the `credentials` section of the `azure.yml` config as in the example below, or alternatively using environment variables named `AZURE_SUBSCRIPTION_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, and `AZURE_TENANT_ID`. These environment variables allow keeping your credentials separate from the metrics configuration.
 
 ### Example azure-metrics-exporter config
 
@@ -55,10 +57,10 @@ You can find endpoints for national clouds [here](http://www.azurespeed.com/Info
 active_directory_authority_url: "https://login.microsoftonline.com/"
 resource_manager_url: "https://management.azure.com/"
 credentials:
-  subscription_id: <secret>
-  client_id: <secret>
-  client_secret: <secret>
-  tenant_id: <secret>
+  subscription_id: <secret, or AZURE_SUBSCRIPTION_ID>
+  client_id: <secret, or AZURE_CLIENT_ID>
+  client_secret: <secret, or AZURE_CLIENT_SECRET>
+  tenant_id: <secret, or AZURE_TENANT_ID>
 
 targets:
   - resource: "azure_resource_id"
