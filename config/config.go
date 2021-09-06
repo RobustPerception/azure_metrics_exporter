@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -43,6 +44,21 @@ func (sc *SafeConfig) ReloadConfig(confFile string) (err error) {
 
 	if err := yaml.Unmarshal(yamlFile, c); err != nil {
 		return fmt.Errorf("Error parsing config file: %s", err)
+	}
+
+	// Check for credentials provided using environment variables.
+	// Treat the environment variables as overrides of anything in the YAML file.
+	if val, found := os.LookupEnv("AZURE_SUBSCRIPTION_ID"); found {
+		c.Credentials.SubscriptionID = val
+	}
+	if val, found := os.LookupEnv("AZURE_CLIENT_ID"); found {
+		c.Credentials.ClientID = val
+	}
+	if val, found := os.LookupEnv("AZURE_CLIENT_SECRET"); found {
+		c.Credentials.ClientSecret = val
+	}
+	if val, found := os.LookupEnv("AZURE_TENANT_ID"); found {
+		c.Credentials.TenantID = val
 	}
 
 	if err := c.Validate(); err != nil {
