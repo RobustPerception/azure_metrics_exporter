@@ -49,6 +49,7 @@ type resourceMeta struct {
 	resourceURL     string
 	metricNamespace string
 	metrics         string
+	labels          []config.Label
 	aggregations    []string
 	resource        AzureResource
 }
@@ -80,7 +81,7 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 
 		if len(value.Timeseries) > 0 {
 			metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
-			labels := CreateResourceLabels(rm.resourceURL)
+			labels := CreateResourceLabels(rm)
 
 			if hasAggregation(rm.aggregations, "Total") {
 				ch <- prometheus.MustNewConstMetric(
@@ -233,6 +234,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		rm.resourceID = target.Resource
 		rm.metricNamespace = target.MetricNamespace
 		rm.metrics = strings.Join(metrics, ",")
+		rm.labels = target.Labels
 		rm.aggregations = filterAggregations(target.Aggregations)
 		rm.resourceURL = resourceURLFrom(target.Resource, rm.metricNamespace, rm.metrics, rm.aggregations)
 		incompleteResources = append(incompleteResources, rm)
@@ -258,6 +260,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			rm.resourceID = f.ID
 			rm.metricNamespace = resourceGroup.MetricNamespace
 			rm.metrics = metricsStr
+			rm.labels = resourceGroup.Labels
 			rm.aggregations = filterAggregations(resourceGroup.Aggregations)
 			rm.resourceURL = resourceURLFrom(f.ID, rm.metricNamespace, rm.metrics, rm.aggregations)
 			rm.resource = f
@@ -286,6 +289,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			rm.resourceID = f.ID
 			rm.metricNamespace = resourceTag.MetricNamespace
 			rm.metrics = metricsStr
+			rm.labels = resourceTag.Labels
 			rm.aggregations = filterAggregations(resourceTag.Aggregations)
 			rm.resourceURL = resourceURLFrom(f.ID, rm.metricNamespace, rm.metrics, rm.aggregations)
 			incompleteResources = append(incompleteResources, rm)

@@ -3,25 +3,31 @@ package main
 import (
 	"reflect"
 	"testing"
+	"github.com/RobustPerception/azure_metrics_exporter/config"
 )
 
 func TestCreateResourceLabels(t *testing.T) {
 	var cases = []struct {
-		url  string
+		rm   resourceMeta
 		want map[string]string
 	}{
 		{
-			"/subscriptions/abc123d4-e5f6-g7h8-i9j10-a1b2c3d4e5f6/resourceGroups/prod-rg-001/providers/Microsoft.Compute/virtualMachines/prod-vm-01/providers/microsoft.insights/metrics",
-			map[string]string{"resource_group": "prod-rg-001", "resource_name": "prod-vm-01"},
+			resourceMeta{
+				resourceURL: "/subscriptions/abc123d4-e5f6-g7h8-i9j10-a1b2c3d4e5f6/resourceGroups/prod-rg-001/providers/Microsoft.Compute/virtualMachines/prod-vm-01/providers/microsoft.insights/metrics",
+				labels: []config.Label{{Name: "label", Value: "value"}},
+			},
+			map[string]string{"label": "value", "resource_group": "prod-rg-001", "resource_type": "Microsoft.Compute/virtualMachines", "resource_name": "prod-vm-01"},
 		},
 		{
-			"/subscriptions/abc123d4-e5f6-g7h8-i9j10-a1b2c3d4e5f6/resourceGroups/prod-rg-002/providers/Microsoft.Sql/servers/sqlprod/databases/prod-db-01/providers/microsoft.insights/metrics",
-			map[string]string{"resource_group": "prod-rg-002", "resource_name": "sqlprod", "sub_resource_name": "prod-db-01"},
+			resourceMeta{
+				resourceURL: "/subscriptions/abc123d4-e5f6-g7h8-i9j10-a1b2c3d4e5f6/resourceGroups/prod-rg-002/providers/Microsoft.Sql/servers/sqlprod/databases/prod-db-01/providers/microsoft.insights/metrics",
+			},
+			map[string]string{"resource_group": "prod-rg-002", "resource_name": "sqlprod", "resource_type": "Microsoft.Sql/servers", "sub_resource_name": "prod-db-01"},
 		},
 	}
 
 	for _, c := range cases {
-		got := CreateResourceLabels(c.url)
+		got := CreateResourceLabels(c.rm)
 
 		if !reflect.DeepEqual(got, c.want) {
 			t.Errorf("doesn't create expected resource labels\ngot: %v\nwant: %v", got, c.want)
