@@ -96,6 +96,14 @@ resource_tags:
       - "Microsoft.Compute/virtualMachines"
     metrics:
       - name: "CPU Credits Consumed"
+  - resource_tag_name: "dbtype"
+    resource_tag_value: "document"
+    resource_types:
+      - Microsoft.DocumentDB/databaseAccounts
+    metrics:
+      - name: "TotalRequestUnits"
+      - name: "TotalRequests"
+    dimensions: "CollectionName eq '*' and StatusCode eq '*'"
 
 ```
 
@@ -105,6 +113,9 @@ The `metric_namespace` property is optional for all filtering types.
 When the metric namespace is specified, it will be added as a prefix of the metric name.
 It can be used to target [custom metrics](https://docs.microsoft.com/en-us/azure/azure-monitor/platform/metrics-custom-overview), such as [guest OS performance counters](https://docs.microsoft.com/en-us/azure/azure-monitor/platform/collect-custom-metrics-guestos-vm-classic).
 If not specified, the default metric namespace of the resource will apply.
+
+The `dimensions` property is optional for all filtering types. If `dimensions` property is provided, it will add the provided dimensions as label in the metrics.
+You can get the available `dimensions` for a given resource metrics using [metrics definitions](#retrieving-metric-definitions).
 
 ### Resource group filtering
 
