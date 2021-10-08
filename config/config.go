@@ -95,6 +95,24 @@ func (c *Config) Validate() (err error) {
 		}
 	}
 
+	for _, t := range c.ResourceTags {
+		if err := c.validateAggregations(t.Aggregations); err != nil {
+			return err
+		}
+
+		if len(t.ResourceTagName) == 0 {
+			return fmt.Errorf("resource_tag_name needs to be specified in each resource tag")
+		}
+
+		if len(t.ResourceTagValue) == 0 {
+			return fmt.Errorf("resource_tag_value needs to be specified in each resource tag")
+		}
+
+		if len(t.Metrics) == 0 {
+			return fmt.Errorf("At least one metric needs to be specified in each resource tag")
+		}
+	}
+
 	return nil
 }
 

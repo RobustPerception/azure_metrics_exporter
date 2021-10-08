@@ -455,7 +455,7 @@ func (ac *AzureClient) listByTag(tagName string, tagValue string, types []string
 }
 
 func (ac *AzureClient) listAPIVersions() error {
-	apiVersion := "2019-05-10"
+	apiVersion := "2021-04-01"
 	var versionResponse APIVersionResponse
 
 	subscription := fmt.Sprintf("subscriptions/%s", sc.C.Credentials.SubscriptionID)
