@@ -91,6 +91,12 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 				fmt.Println(err)
 			}
 
+			if len(value.Timeseries[0].Dimensions) > 0 {
+				for _, dimension := range value.Timeseries[0].Dimensions {
+					labels[dimension.Name.Value] = dimension.Value
+				}
+			}
+			
 			if hasAggregation(rm.aggregations, "Total") {
 				ch <- prometheus.NewMetricWithTimestamp(t, prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
