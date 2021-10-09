@@ -103,7 +103,7 @@ resource_tags:
     metrics:
       - name: "TotalRequestUnits"
       - name: "TotalRequests"
-    dimensions: "CollectionName eq '*' and StatusCode eq '*'"
+    dimensions: "CollectionName eq \'*\' and StatusCode eq \'*\'"
 
 ```
 
