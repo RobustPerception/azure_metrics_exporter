@@ -71,6 +71,13 @@ type AzureMetricValueResponse struct {
 				Minimum   float64 `json:"minimum"`
 				Maximum   float64 `json:"maximum"`
 			} `json:"data"`
+			Dimensions []struct {
+				Name struct {
+					LocalizedValue string `json:"localizedValue"`
+					Value          string `json:"value"`
+				} `json:"name"`
+				Value string `json:"value"`
+			} `json:"metadatavalues"`
 		} `json:"timeseries"`
 		ID   string `json:"id"`
 		Name struct {
@@ -279,6 +286,25 @@ func (ac *AzureClient) getMetricDefinitions() (map[string]AzureMetricDefinitionR
 			definitions[defKey] = *def
 		}
 	}
+	resourcesCache := make(map[string][]byte)
+	for _, resourceTag := range sc.C.ResourceTags {
+		resources, err := ac.filteredListByTag(resourceTag, resourcesCache)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get resources for resource tag:value %s:%s and resource types %s: %v",
+				resourceTag.ResourceTagName, resourceTag.ResourceTagValue, resourceTag.ResourceTypes, err)
+		}
+		for _, resource := range resources {
+			def, err := ac.getAzureMetricDefinitionResponse(resource.ID, resourceTag.MetricNamespace)
+			if err != nil {
+				return nil, err
+			}
+			defKey := resource.ID
+			if len(resourceTag.MetricNamespace) > 0 {
+				defKey = fmt.Sprintf("%s (Metric namespace: %s)", defKey, resourceTag.MetricNamespace)
+			}
+			definitions[defKey] = *def
+		}
+	}
 	return definitions, nil
 }
 
@@ -307,12 +333,27 @@ func (ac *AzureClient) getMetricNamespaces() (map[string]MetricNamespaceCollecti
 			namespaces[resource.ID] = *namespaceCollection
 		}
 	}
+	resourcesCache := make(map[string][]byte)
+	for _, resourceTag := range sc.C.ResourceTags {
+		resources, err := ac.filteredListByTag(resourceTag, resourcesCache)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get resources for resource tag:value %s:%s and resource types %s: %v",
+				resourceTag.ResourceTagName, resourceTag.ResourceTagValue, resourceTag.ResourceTypes, err)
+		}
+		for _, resource := range resources {
+			namespaceCollection, err := ac.getMetricNamespaceCollectionResponse(resource.ID)
+			if err != nil {
+				return nil, err
+			}
+			namespaces[resource.ID] = *namespaceCollection
+		}
+	}
 	return namespaces, nil
 }
 
 // Returns AzureMetricDefinitionResponse for a given resource
 func (ac *AzureClient) getAzureMetricDefinitionResponse(resource string, metricNamespace string) (*AzureMetricDefinitionResponse, error) {
-	apiVersion := "2018-01-01"
+	apiVersion := "2019-07-01"
 
 	metricsResource := fmt.Sprintf("subscriptions/%s%s", sc.C.Credentials.SubscriptionID, resource)
 	metricsTarget := fmt.Sprintf("%s/%s/providers/microsoft.insights/metricDefinitions?api-version=%s", sc.C.ResourceManagerURL, metricsResource, apiVersion)
@@ -584,8 +625,8 @@ type batchRequest struct {
 	Method      string `json:"httpMethod"`
 }
 
-func resourceURLFrom(resource string, metricNamespace string, metricNames string, aggregations []string) string {
-	apiVersion := "2018-01-01"
+func resourceURLFrom(resource string, metricNamespace string, metricNames string, aggregations []string, dimensions string) string {
+	apiVersion := "2019-07-01"
 
 	path := fmt.Sprintf(
 		"/subscriptions/%s%s/providers/microsoft.insights/metrics",
@@ -602,6 +643,9 @@ func resourceURLFrom(resource string, metricNamespace string, metricNames string
 	if metricNamespace != "" {
 		values.Add("metricnamespace", metricNamespace)
 	}
+	if dimensions != "" {
+		values.Add("$filter", dimensions)
+	}
 	filtered := filterAggregations(aggregations)
 	values.Add("aggregation", strings.Join(filtered, ","))
 	values.Add("timespan", fmt.Sprintf("%s/%s", startTime, endTime))
@@ -611,6 +655,7 @@ func resourceURLFrom(resource string, metricNamespace string, metricNames string
 		Path:     path,
 		RawQuery: values.Encode(),
 	}
+
 	return url.String()
 }
 

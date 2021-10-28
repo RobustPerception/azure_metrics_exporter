@@ -1,6 +1,9 @@
-FROM golang:1.11 as builder
+FROM golang:1.16 as builder
+
 WORKDIR /go/src/github.com/RobustPerception/azure_metrics_exporter
+
 COPY . .
+
 RUN make build
 
 FROM quay.io/prometheus/busybox:latest AS app

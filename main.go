@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/RobustPerception/azure_metrics_exporter/config"
 
@@ -76,42 +77,60 @@ func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta,
 		if rm.metricNamespace != "" {
 			metricName = strings.ToLower(rm.metricNamespace + "_" + metricName)
 		}
-		metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
 
-		if len(value.Timeseries) > 0 {
-			metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
+		metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
+		if len(value.Timeseries) == 0 {
+			return
+		}
+
+		for _, item := range value.Timeseries {
+
+			metricValue := item.Data[len(item.Data)-1]
 			labels := CreateResourceLabels(rm.resourceURL)
 
+			layout := "2006-01-02T15:04:05Z"
+			t, err := time.Parse(layout, item.Data[0].TimeStamp)
+
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			if len(item.Dimensions) > 0 {
+				for _, dimension := range item.Dimensions {
+					labels[dimension.Name.Value] = dimension.Value
+				}
+			}
+			
 			if hasAggregation(rm.aggregations, "Total") {
-				ch <- prometheus.MustNewConstMetric(
+				ch <- prometheus.NewMetricWithTimestamp(t, prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Total,
-				)
+				))
 			}
 
 			if hasAggregation(rm.aggregations, "Average") {
-				ch <- prometheus.MustNewConstMetric(
+				ch <- prometheus.NewMetricWithTimestamp(t,prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_average", metricName+"_average", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Average,
-				)
+				))
 			}
 
 			if hasAggregation(rm.aggregations, "Minimum") {
-				ch <- prometheus.MustNewConstMetric(
+				ch <- prometheus.NewMetricWithTimestamp(t,prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_min", metricName+"_min", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Minimum,
-				)
+				))
 			}
 
 			if hasAggregation(rm.aggregations, "Maximum") {
-				ch <- prometheus.MustNewConstMetric(
+				ch <- prometheus.NewMetricWithTimestamp(t,prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_max", metricName+"_max", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Maximum,
-				)
+				))
 			}
 		}
 	}
@@ -152,6 +171,7 @@ func (c *Collector) batchCollectMetrics(ch chan<- prometheus.Metric, resources [
 
 		var batchData AzureBatchMetricResponse
 		err = json.Unmarshal(batchBody, &batchData)
+
 		if err != nil {
 			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
 			return
@@ -223,73 +243,62 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	var incompleteResources []resourceMeta
 
 	for _, target := range sc.C.Targets {
+		for _, metrics := range target.Metrics{
 		var rm resourceMeta
 
-		metrics := []string{}
-		for _, metric := range target.Metrics {
-			metrics = append(metrics, metric.Name)
-		}
-
-		rm.resourceID = target.Resource
-		rm.metricNamespace = target.MetricNamespace
-		rm.metrics = strings.Join(metrics, ",")
-		rm.aggregations = filterAggregations(target.Aggregations)
-		rm.resourceURL = resourceURLFrom(target.Resource, rm.metricNamespace, rm.metrics, rm.aggregations)
-		incompleteResources = append(incompleteResources, rm)
+	        rm.resourceID = target.Resource
+		    rm.metricNamespace = target.MetricNamespace
+		    rm.metrics = metrics.Name
+		    rm.aggregations = filterAggregations(target.Aggregations)
+		    rm.resourceURL = resourceURLFrom(target.Resource, rm.metricNamespace, rm.metrics, rm.aggregations, target.Dimensions)
+		    incompleteResources = append(incompleteResources, rm)
+	    }
 	}
 
 	for _, resourceGroup := range sc.C.ResourceGroups {
-		metrics := []string{}
 		for _, metric := range resourceGroup.Metrics {
-			metrics = append(metrics, metric.Name)
-		}
-		metricsStr := strings.Join(metrics, ",")
-
-		filteredResources, err := ac.filteredListFromResourceGroup(resourceGroup)
-		if err != nil {
-			log.Printf("Failed to get resources for resource group %s and resource types %s: %v",
-				resourceGroup.ResourceGroup, resourceGroup.ResourceTypes, err)
-			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
-			return
-		}
-
-		for _, f := range filteredResources {
-			var rm resourceMeta
-			rm.resourceID = f.ID
-			rm.metricNamespace = resourceGroup.MetricNamespace
-			rm.metrics = metricsStr
-			rm.aggregations = filterAggregations(resourceGroup.Aggregations)
-			rm.resourceURL = resourceURLFrom(f.ID, rm.metricNamespace, rm.metrics, rm.aggregations)
-			rm.resource = f
-			resources = append(resources, rm)
-		}
+	    	filteredResources, err := ac.filteredListFromResourceGroup(resourceGroup)
+	    	if err != nil {
+	    		log.Printf("Failed to get resources for resource group %s and resource types %s: %v",
+	    			resourceGroup.ResourceGroup, resourceGroup.ResourceTypes, err)
+	    		ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
+	    		return
+	    	}
+    
+	    	for _, f := range filteredResources {
+	    		var rm resourceMeta
+	    		rm.resourceID = f.ID
+	    		rm.metricNamespace = resourceGroup.MetricNamespace
+	    		rm.metrics = metric.Name
+	    		rm.aggregations = filterAggregations(resourceGroup.Aggregations)
+	    		rm.resourceURL = resourceURLFrom(f.ID, rm.metricNamespace, rm.metrics, rm.aggregations, resourceGroup.Dimensions)
+	    		rm.resource = f
+	    		resources = append(resources, rm)
+	    	}
+	    }
 	}
 
 	resourcesCache := make(map[string][]byte)
 	for _, resourceTag := range sc.C.ResourceTags {
-		metrics := []string{}
 		for _, metric := range resourceTag.Metrics {
-			metrics = append(metrics, metric.Name)
-		}
-		metricsStr := strings.Join(metrics, ",")
-
-		filteredResources, err := ac.filteredListByTag(resourceTag, resourcesCache)
-		if err != nil {
-			log.Printf("Failed to get resources for tag name %s, tag value %s: %v",
-				resourceTag.ResourceTagName, resourceTag.ResourceTagValue, err)
-			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
-			return
-		}
-
-		for _, f := range filteredResources {
-			var rm resourceMeta
-			rm.resourceID = f.ID
-			rm.metricNamespace = resourceTag.MetricNamespace
-			rm.metrics = metricsStr
-			rm.aggregations = filterAggregations(resourceTag.Aggregations)
-			rm.resourceURL = resourceURLFrom(f.ID, rm.metricNamespace, rm.metrics, rm.aggregations)
-			incompleteResources = append(incompleteResources, rm)
-		}
+    		filteredResources, err := ac.filteredListByTag(resourceTag, resourcesCache)
+    		if err != nil {
+    			log.Printf("Failed to get resources for tag name %s, tag value %s: %v",
+    				resourceTag.ResourceTagName, resourceTag.ResourceTagValue, err)
+    			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
+    			return
+    		}
+    
+    		for _, f := range filteredResources {
+    			var rm resourceMeta
+    			rm.resourceID = f.ID
+    			rm.metricNamespace = resourceTag.MetricNamespace
+    			rm.metrics = metric.Name
+    			rm.aggregations = filterAggregations(resourceTag.Aggregations)
+    			rm.resourceURL = resourceURLFrom(f.ID, rm.metricNamespace, rm.metrics, rm.aggregations, resourceTag.Dimensions)
+    			incompleteResources = append(incompleteResources, rm)
+    		}
+    	}
 	}
 
 	completeResources, err := c.batchLookupResources(incompleteResources)
@@ -333,7 +342,12 @@ func main() {
 		for k, v := range results {
 			log.Printf("Resource: %s\n\nAvailable Metrics:\n", k)
 			for _, r := range v.MetricDefinitionResponses {
-				log.Printf("- %s\n", r.Name.Value)
+				log.Printf("\n\nMetric:\n")
+				log.Printf("- %s", r.Name.Value)
+				log.Printf("\nDimensions:\n")
+				for _, d := range r.Dimensions {
+					log.Printf("- %s\n", d.Value)
+				}
 			}
 		}
 		os.Exit(0)
