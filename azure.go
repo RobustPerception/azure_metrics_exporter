@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/prometheus/common/log"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -142,7 +142,7 @@ func latestVersionFrom(apiList []string) string {
 		dateStr := apiVersionDate.FindString(api)
 		date, err := time.Parse(format, dateStr)
 		if err != nil {
-			log.Println(err)
+			log.Errorln(err)
 			continue
 		}
 
@@ -200,7 +200,7 @@ func (ac *AzureClient) getAccessToken() error {
 	var resp *http.Response
 	var err error
 	if len(sc.C.Credentials.ClientID) == 0 {
-		log.Printf("Using managed identity")
+		log.Infoln("Using managed identity")
 		target := fmt.Sprintf("http://169.254.169.254/metadata/identity/oauth2/token?resource=%s&api-version=2018-02-01", sc.C.ResourceManagerURL)
 		req, err := http.NewRequest("GET", target, nil)
 		if err != nil {
