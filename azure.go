@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/prometheus/common/log"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"github.com/percona/azure_metrics_exporter/config"
+	"github.com/prometheus/common/log"
 )
 
 var (
