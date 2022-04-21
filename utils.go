@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"github.com/prometheus/common/log"
 	"reflect"
 	"regexp"
 	"strings"

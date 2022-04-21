@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -15,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 
+	"github.com/prometheus/common/log"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -55,16 +55,16 @@ type resourceMeta struct {
 
 func (c *Collector) extractMetrics(ch chan<- prometheus.Metric, rm resourceMeta, httpStatusCode int, metricValueData AzureMetricValueResponse, publishedResources map[string]bool) {
 	if httpStatusCode != 200 {
-		log.Printf("Received %d status for resource %s. %s", httpStatusCode, rm.resourceURL, metricValueData.APIError.Message)
+		log.Errorf("Received %d status for resource %s. %s", httpStatusCode, rm.resourceURL, metricValueData.APIError.Message)
 		return
 	}
 
 	if len(metricValueData.Value) == 0 || len(metricValueData.Value[0].Timeseries) == 0 {
-		log.Printf("Metric %v not found at target %v\n", rm.metrics, rm.resourceURL)
+		log.Errorf("Metric %v not found at target %v\n", rm.metrics, rm.resourceURL)
 		return
 	}
 	if len(metricValueData.Value[0].Timeseries[0].Data) == 0 {
-		log.Printf("No metric data returned for metric %v at target %v\n", rm.metrics, rm.resourceURL)
+		log.Errorf("No metric data returned for metric %v at target %v\n", rm.metrics, rm.resourceURL)
 		return
 	}
 
@@ -230,7 +230,7 @@ func (c *Collector) batchLookupResources(resources []resourceMeta) ([]resourceMe
 // Collect - collect results from Azure Montior API and create Prometheus metrics.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	if err := ac.refreshAccessToken(); err != nil {
-		log.Println(err)
+		log.Errorln(err)
 		ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
 		return
 	}
@@ -263,7 +263,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 
 		filteredResources, err := ac.filteredListFromResourceGroup(resourceGroup)
 		if err != nil {
-			log.Printf("Failed to get resources for resource group %s and resource types %s: %v",
+			log.Errorf("Failed to get resources for resource group %s and resource types %s: %v",
 				resourceGroup.ResourceGroup, resourceGroup.ResourceTypes, err)
 			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
 			return
@@ -291,7 +291,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 
 		filteredResources, err := ac.filteredListByTag(resourceTag, resourcesCache)
 		if err != nil {
-			log.Printf("Failed to get resources for tag name %s, tag value %s: %v",
+			log.Errorf("Failed to get resources for tag name %s, tag value %s: %v",
 				resourceTag.ResourceTagName, resourceTag.ResourceTagValue, err)
 			ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
 			return
@@ -310,7 +310,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 
 	completeResources, err := c.batchLookupResources(incompleteResources)
 	if err != nil {
-		log.Printf("Failed to get resource info: %s", err)
+		log.Errorf("Failed to get resource info: %s", err)
 		ch <- prometheus.NewInvalidMetric(azureErrorDesc, err)
 		return
 	}
@@ -329,6 +329,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	kingpin.HelpFlag.Short('h')
+	log.AddFlags(kingpin.CommandLine)
 	kingpin.Parse()
 	if err := sc.ReloadConfig(*configFile); err != nil {
 		log.Fatalf("Error loading config: %v", err)
@@ -347,9 +348,9 @@ func main() {
 		}
 
 		for k, v := range results {
-			log.Printf("Resource: %s\n\nAvailable Metrics:\n", k)
+			log.Infof("Resource: %s\n\nAvailable Metrics:\n", k)
 			for _, r := range v.MetricDefinitionResponses {
-				log.Printf("- %s\n", r.Name.Value)
+				log.Infof("- %s\n", r.Name.Value)
 			}
 		}
 		os.Exit(0)
@@ -363,9 +364,9 @@ func main() {
 		}
 
 		for k, v := range results {
-			log.Printf("Resource: %s\n\nAvailable namespaces:\n", k)
+			log.Infof("Resource: %s\n\nAvailable namespaces:\n", k)
 			for _, namespace := range v.MetricNamespaceCollection {
-				log.Printf("- %s\n", namespace.Properties.MetricNamespaceName)
+				log.Infof("- %s\n", namespace.Properties.MetricNamespaceName)
 			}
 		}
 		os.Exit(0)
@@ -389,7 +390,7 @@ func main() {
 	})
 
 	http.HandleFunc("/metrics", handler)
-	log.Printf("azure_metrics_exporter listening on port %v", *listenAddress)
+	log.Infof("azure_metrics_exporter listening on port %v", *listenAddress)
 	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
 		log.Fatalf("Error starting HTTP server: %v", err)
 	}
