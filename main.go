@@ -330,6 +330,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	kingpin.HelpFlag.Short('h')
 	log.AddFlags(kingpin.CommandLine)
+	kingpin.Version(version.Print("azure_exporter"))
 	kingpin.Parse()
 	if err := sc.ReloadConfig(*configFile); err != nil {
 		log.Fatalf("Error loading config: %v", err)
